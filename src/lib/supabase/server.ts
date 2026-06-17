@@ -12,6 +12,8 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // App tables live in the `wec` schema, so default data calls there.
+      db: { schema: "wec" },
       cookies: {
         getAll() {
           return cookieStore.getAll();
