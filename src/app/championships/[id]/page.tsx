@@ -56,8 +56,10 @@ export default async function ChampionshipPage({
           <table className="shrink-0 border-collapse text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
               <tr className="h-16">
-                <th className="px-3 align-bottom text-left font-medium">#</th>
-                <th className="px-3 align-bottom text-left font-medium">
+                <th className="px-1.5 align-bottom text-left font-medium sm:px-3">
+                  #
+                </th>
+                <th className="px-1.5 align-bottom text-left font-medium sm:px-3">
                   Racer
                 </th>
               </tr>
@@ -65,13 +67,21 @@ export default async function ChampionshipPage({
             <tbody>
               {standings.map((row) => (
                 <tr key={row.racer.id} className="h-12 border-t border-neutral-800">
-                  <td className="px-3 text-neutral-400">{row.position}</td>
-                  <td className="whitespace-nowrap px-3 font-medium">
+                  <td className="px-1.5 text-neutral-400 sm:px-3">
+                    {row.position}
+                  </td>
+                  <td className="whitespace-nowrap px-1.5 font-medium sm:px-3">
                     <FlagIcon
                       countryCode={row.racer.country_code}
-                      className="mr-2"
+                      className="mr-1.5 sm:mr-2"
                     />
-                    {row.racer.first_name} {row.racer.last_name}
+                    {/* Abbreviate first name on mobile to save horizontal space */}
+                    <span className="sm:hidden">
+                      {row.racer.first_name.charAt(0)}. {row.racer.last_name}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {row.racer.first_name} {row.racer.last_name}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -86,7 +96,7 @@ export default async function ChampionshipPage({
                   {races.map((race) => (
                     <th
                       key={race.id}
-                      className="px-3 align-bottom text-center font-medium"
+                      className="px-1.5 align-bottom text-center font-medium sm:px-3"
                       title={race.track.name}
                     >
                       <div className="flex flex-col items-center leading-tight">
@@ -135,7 +145,7 @@ export default async function ChampionshipPage({
                         return (
                           <td
                             key={race.id}
-                            className="px-3 text-center text-neutral-300"
+                            className="px-1.5 text-center text-neutral-300 sm:px-3"
                           >
                             –
                           </td>
@@ -144,7 +154,7 @@ export default async function ChampionshipPage({
                       return (
                         <td
                           key={race.id}
-                          className="px-3 text-center font-bold text-neutral-900"
+                          className="px-1.5 text-center font-bold text-neutral-900 sm:px-3"
                           style={{
                             backgroundColor: resultColor(
                               cell.rank,
@@ -166,7 +176,7 @@ export default async function ChampionshipPage({
           <table className="shrink-0 border-collapse text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
               <tr className="h-16">
-                <th className="px-3 align-bottom text-center font-medium">
+                <th className="px-1.5 align-bottom text-center font-medium sm:px-3">
                   Points
                 </th>
               </tr>
@@ -177,7 +187,7 @@ export default async function ChampionshipPage({
                   key={row.racer.id}
                   className="h-12 border-t border-neutral-800"
                 >
-                  <td className="px-3 text-center font-semibold">
+                  <td className="px-1.5 text-center font-semibold sm:px-3">
                     {row.points}
                   </td>
                 </tr>
