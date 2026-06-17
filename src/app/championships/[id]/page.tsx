@@ -46,91 +46,123 @@ export default async function ChampionshipPage({
       </div>
 
       {/* Standings matrix */}
-      <div className="mt-6 overflow-x-auto rounded-lg border border-neutral-800">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-neutral-900 text-neutral-400">
-            <tr>
-              <th className="sticky left-0 z-10 w-10 bg-neutral-900 px-3 py-3 text-left font-medium">
-                #
-              </th>
-              <th className="sticky left-10 z-10 bg-neutral-900 px-3 py-3 text-left font-medium">
-                Racer
-              </th>
-              {races.map((race) => (
-                <th
-                  key={race.id}
-                  className="px-3 py-3 text-center font-medium"
-                  title={race.track.name}
-                >
-                  <div className="flex flex-col items-center leading-tight">
-                    <FlagIcon
-                      countryCode={race.track.country_code}
-                      className="text-base"
-                    />
-                    <span>{race.track.short_code}</span>
-                  </div>
+      {standings.length === 0 ? (
+        <div className="mt-6 rounded-lg border border-neutral-800 px-3 py-6 text-center text-sm text-neutral-500">
+          No racers found.
+        </div>
+      ) : (
+        <div className="mt-6 flex rounded-lg border border-neutral-800">
+          {/* Frozen left: position + racer */}
+          <table className="shrink-0 border-collapse text-sm">
+            <thead className="bg-neutral-900 text-neutral-400">
+              <tr className="h-16">
+                <th className="px-3 align-bottom text-left font-medium">#</th>
+                <th className="px-3 align-bottom text-left font-medium">
+                  Racer
                 </th>
+              </tr>
+            </thead>
+            <tbody>
+              {standings.map((row) => (
+                <tr key={row.racer.id} className="h-12 border-t border-neutral-800">
+                  <td className="px-3 text-neutral-400">{row.position}</td>
+                  <td className="whitespace-nowrap px-3 font-medium">
+                    <FlagIcon
+                      countryCode={row.racer.country_code}
+                      className="mr-2"
+                    />
+                    {row.racer.first_name} {row.racer.last_name}
+                  </td>
+                </tr>
               ))}
-              <th className="sticky right-0 z-10 bg-neutral-900 px-3 py-3 text-center font-medium">
-                Points
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {standings.map((row) => (
-              <tr key={row.racer.id} className="border-t border-neutral-800">
-                <td className="sticky left-0 z-10 w-10 bg-neutral-950 px-3 py-3 text-neutral-400">
-                  {row.position}
-                </td>
-                <td className="sticky left-10 z-10 whitespace-nowrap bg-neutral-950 px-3 py-3 font-medium">
-                  <FlagIcon
-                    countryCode={row.racer.country_code}
-                    className="mr-2"
-                  />
-                  {row.racer.first_name} {row.racer.last_name}
-                </td>
-                {races.map((race) => {
-                  const cell = row.cells[race.id];
-                  if (!cell) {
-                    return (
-                      <td
-                        key={race.id}
-                        className="px-3 py-3 text-center text-neutral-300"
-                      >
-                        –
-                      </td>
-                    );
-                  }
-                  return (
-                    <td
+            </tbody>
+          </table>
+
+          {/* Scrollable middle: race results */}
+          <div className="flex-1 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-neutral-900 text-neutral-400">
+                <tr className="h-16">
+                  {races.map((race) => (
+                    <th
                       key={race.id}
-                      className="px-3 py-3 text-center font-bold text-neutral-900"
-                      style={{
-                        backgroundColor: resultColor(cell.rank, cell.retired),
-                      }}
+                      className="px-3 align-bottom text-center font-medium"
+                      title={race.track.name}
                     >
-                      {cell.retired ? "RET" : cell.rank}
-                    </td>
-                  );
-                })}
-                <td className="sticky right-0 z-10 bg-neutral-950 px-3 py-3 text-center font-semibold">
-                  {row.points}
-                </td>
+                      <div className="flex flex-col items-center leading-tight">
+                        <FlagIcon
+                          countryCode={race.track.country_code}
+                          className="text-base"
+                        />
+                        <span>{race.track.short_code}</span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {standings.map((row) => (
+                  <tr
+                    key={row.racer.id}
+                    className="h-12 border-t border-neutral-800"
+                  >
+                    {races.map((race) => {
+                      const cell = row.cells[race.id];
+                      if (!cell) {
+                        return (
+                          <td
+                            key={race.id}
+                            className="px-3 text-center text-neutral-300"
+                          >
+                            –
+                          </td>
+                        );
+                      }
+                      return (
+                        <td
+                          key={race.id}
+                          className="px-3 text-center font-bold text-neutral-900"
+                          style={{
+                            backgroundColor: resultColor(
+                              cell.rank,
+                              cell.retired,
+                            ),
+                          }}
+                        >
+                          {cell.retired ? "RET" : cell.rank}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Frozen right: points */}
+          <table className="shrink-0 border-collapse text-sm">
+            <thead className="bg-neutral-900 text-neutral-400">
+              <tr className="h-16">
+                <th className="px-3 align-bottom text-center font-medium">
+                  Points
+                </th>
               </tr>
-            ))}
-            {standings.length === 0 && (
-              <tr>
-                <td
-                  colSpan={races.length + 3}
-                  className="px-3 py-6 text-center text-neutral-500"
+            </thead>
+            <tbody>
+              {standings.map((row) => (
+                <tr
+                  key={row.racer.id}
+                  className="h-12 border-t border-neutral-800"
                 >
-                  No racers found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                  <td className="px-3 text-center font-semibold">
+                    {row.points}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Admin: enter race results */}
       {isAdmin && (
