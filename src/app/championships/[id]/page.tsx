@@ -1,0 +1,144 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getChampionshipData } from "@/lib/championship";
+import { getAuth } from "@/lib/auth";
+import { flagEmoji } from "@/lib/flags";
+
+export const dynamic = "force-dynamic";
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+export default async function ChampionshipPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const [data, { isAdmin }] = await Promise.all([
+    getChampionshipData(id),
+    getAuth(),
+  ]);
+
+  if (!data) notFound();
+  const { championship, races, standings } = data;
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-10">
+      <Link href="/" className="text-sm text-neutral-400 hover:text-white">
+        ← All championships
+      </Link>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{championship.name}</h1>
+          <p className="mt-1 text-sm capitalize text-neutral-400">
+            {championship.status} · {races.length} races
+          </p>
+        </div>
+      </div>
+
+      {/* Standings matrix */}
+      <div className="mt-6 overflow-x-auto rounded-lg border border-neutral-800">
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-neutral-900 text-neutral-400">
+            <tr>
+              <th className="sticky left-0 z-10 bg-neutral-900 px-3 py-3 text-left font-medium">
+                #
+              </th>
+              <th className="sticky left-10 z-10 bg-neutral-900 px-3 py-3 text-left font-medium">
+                Racer
+              </th>
+              {races.map((race) => (
+                <th
+                  key={race.id}
+                  className="px-3 py-3 text-center font-medium"
+                  title={race.track.name}
+                >
+                  <div className="flex flex-col items-center leading-tight">
+                    <span className="text-base">
+                      {flagEmoji(race.track.country_code)}
+                    </span>
+                    <span>{race.track.short_code}</span>
+                  </div>
+                </th>
+              ))}
+              <th className="px-3 py-3 text-center font-medium">Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((row) => (
+              <tr key={row.racer.id} className="border-t border-neutral-800">
+                <td className="sticky left-0 z-10 bg-neutral-950 px-3 py-3 text-neutral-400">
+                  {row.position}
+                </td>
+                <td className="sticky left-10 z-10 whitespace-nowrap bg-neutral-950 px-3 py-3 font-medium">
+                  <span className="mr-2">{flagEmoji(row.racer.country_code)}</span>
+                  {row.racer.first_name} {row.racer.last_name}
+                </td>
+                {races.map((race) => {
+                  const rank = row.ranks[race.id];
+                  return (
+                    <td
+                      key={race.id}
+                      className="px-3 py-3 text-center text-neutral-300"
+                    >
+                      {rank ? ordinal(rank) : "–"}
+                    </td>
+                  );
+                })}
+                <td className="px-3 py-3 text-center font-semibold">
+                  {row.points}
+                </td>
+              </tr>
+            ))}
+            {standings.length === 0 && (
+              <tr>
+                <td
+                  colSpan={races.length + 3}
+                  className="px-3 py-6 text-center text-neutral-500"
+                >
+                  No racers found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Admin: enter race results */}
+      {isAdmin && (
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold">Enter race results</h2>
+          <ul className="mt-3 divide-y divide-neutral-800 overflow-hidden rounded-lg border border-neutral-800">
+            {races.map((race) => (
+              <li
+                key={race.id}
+                className="flex items-center justify-between px-4 py-3"
+              >
+                <span>
+                  <span className="mr-2 text-neutral-500">
+                    Round {race.round}
+                  </span>
+                  <span className="mr-2">
+                    {flagEmoji(race.track.country_code)}
+                  </span>
+                  {race.track.name} ({race.track.short_code})
+                </span>
+                <Link
+                  href={`/championships/${championship.id}/races/${race.id}`}
+                  className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
+                >
+                  Edit results
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </main>
+  );
+}

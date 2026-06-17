@@ -1,0 +1,65 @@
+# Local development config for the Supabase CLI.
+# Docs: https://supabase.com/docs/guides/local-development
+
+project_id = "wec-championship-tracker"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.seed]
+# `supabase db reset` runs the migrations, then loads these seed files.
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1:54321"
+
+# Local email testing inbox (magic links land here). Open the URL below in a
+# browser after requesting a sign-in link.
+[inbucket]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+# The base site URL and the redirect targets the magic link is allowed to use.
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000/auth/confirm",
+  "http://127.0.0.1:3000/auth/confirm",
+]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# No real SMTP locally — confirmation links are captured by Inbucket/Mailpit.
+enable_confirmations = false
+secure_password_change = false
+
+# Override the default magic-link email so the link points straight at the
+# Next.js confirm route with a token_hash. The default template uses
+# {{ .ConfirmationURL }}, which redirects with a PKCE ?code= param that the
+# token_hash-based /auth/confirm route can't verify (it returns error=invalid).
+[auth.email.template.magic_link]
+content_path = "./supabase/templates/magic_link.html"
+
+# This app uses Next.js server actions/route handlers, not Supabase Edge
+# Functions, so the Deno edge runtime container is disabled. It also avoids a
+# startup-time network fetch from deno.land.
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
