@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/lib/auth";
-import { flagEmoji } from "@/lib/flags";
+import FlagIcon from "@/components/FlagIcon";
 import { saveRaceResults } from "../../../actions";
 import type { Racer, RaceResult, Track } from "@/lib/types";
 
@@ -43,12 +43,12 @@ export default async function RaceResultsPage({
 
   const { data: results } = await supabase
     .from("race_results")
-    .select("id, race_id, racer_id, rank")
+    .select("id, race_id, racer_id, rank, retired")
     .eq("race_id", raceId)
     .returns<RaceResult[]>();
 
-  const rankByRacer = new Map<string, number>(
-    (results ?? []).map((r) => [r.racer_id, r.rank]),
+  const resultByRacer = new Map<string, RaceResult>(
+    (results ?? []).map((r) => [r.racer_id, r]),
   );
 
   return (
@@ -61,35 +61,52 @@ export default async function RaceResultsPage({
       </Link>
 
       <h1 className="mt-4 text-2xl font-bold">
-        <span className="mr-2">{flagEmoji(race.track.country_code)}</span>
+        <FlagIcon countryCode={race.track.country_code} className="mr-2" />
         {race.track.name}
       </h1>
       <p className="mt-1 text-sm text-neutral-400">
         Round {race.round} · {race.track.short_code} · Enter each racer&apos;s
-        finishing position. Leave blank to clear.
+        finishing position, or mark them retired. Leave blank to clear.
       </p>
 
       <form action={saveRaceResults} className="mt-6 space-y-4">
         <input type="hidden" name="race_id" value={race.id} />
         <input type="hidden" name="championship_id" value={id} />
 
-        {(racers ?? []).map((racer) => (
-          <div key={racer.id} className="flex items-center justify-between gap-4">
-            <label htmlFor={`rank_${racer.id}`} className="text-sm">
-              <span className="mr-2">{flagEmoji(racer.country_code)}</span>
-              {racer.first_name} {racer.last_name}
-            </label>
-            <input
-              id={`rank_${racer.id}`}
-              name={`rank_${racer.id}`}
-              type="number"
-              min={1}
-              defaultValue={rankByRacer.get(racer.id) ?? ""}
-              placeholder="–"
-              className="w-20 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-white outline-none focus:border-neutral-400"
-            />
-          </div>
-        ))}
+        {(racers ?? []).map((racer) => {
+          const result = resultByRacer.get(racer.id);
+          return (
+            <div
+              key={racer.id}
+              className="flex items-center justify-between gap-4"
+            >
+              <label htmlFor={`rank_${racer.id}`} className="text-sm">
+                <FlagIcon countryCode={racer.country_code} className="mr-2" />
+                {racer.first_name} {racer.last_name}
+              </label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 text-sm text-neutral-400">
+                  <input
+                    name={`retired_${racer.id}`}
+                    type="checkbox"
+                    defaultChecked={result?.retired ?? false}
+                    className="h-4 w-4 accent-white"
+                  />
+                  Retired
+                </label>
+                <input
+                  id={`rank_${racer.id}`}
+                  name={`rank_${racer.id}`}
+                  type="number"
+                  min={1}
+                  defaultValue={result?.rank ?? ""}
+                  placeholder="–"
+                  className="w-20 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-white outline-none focus:border-neutral-400"
+                />
+              </div>
+            </div>
+          );
+        })}
 
         <button
           type="submit"

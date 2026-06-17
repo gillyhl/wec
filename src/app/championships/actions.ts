@@ -74,8 +74,9 @@ export async function createChampionship(formData: FormData) {
   redirect(`/championships/${championship.id}`);
 }
 
-// Saves finishing positions for a race. A blank/zero rank clears that racer's
-// result. The DB trigger recomputes championship points automatically.
+// Saves finishing positions for a race. A racer can be marked retired (DNF)
+// instead of given a position; a blank/zero rank with no retirement clears that
+// racer's result. The DB trigger recomputes championship points automatically.
 export async function saveRaceResults(formData: FormData) {
   const { isAdmin } = await getAuth();
   if (!isAdmin) throw new Error("Not authorized");
@@ -91,16 +92,26 @@ export async function saveRaceResults(formData: FormData) {
     .select("id")
     .returns<{ id: string }[]>();
 
-  const toUpsert: { race_id: string; racer_id: string; rank: number }[] = [];
+  const toUpsert: {
+    race_id: string;
+    racer_id: string;
+    rank: number | null;
+    retired: boolean;
+  }[] = [];
   const toClear: string[] = [];
 
   for (const racer of racers ?? []) {
+    const retired = formData.get(`retired_${racer.id}`) != null;
     const raw = String(formData.get(`rank_${racer.id}`) ?? "").trim();
     const rank = Number.parseInt(raw, 10);
-    if (raw === "" || Number.isNaN(rank) || rank < 1) {
+
+    if (retired) {
+      // A retirement has no finishing position.
+      toUpsert.push({ race_id: raceId, racer_id: racer.id, rank: null, retired: true });
+    } else if (raw === "" || Number.isNaN(rank) || rank < 1) {
       toClear.push(racer.id);
     } else {
-      toUpsert.push({ race_id: raceId, racer_id: racer.id, rank });
+      toUpsert.push({ race_id: raceId, racer_id: racer.id, rank, retired: false });
     }
   }
 

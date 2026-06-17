@@ -2,14 +2,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getChampionshipData } from "@/lib/championship";
 import { getAuth } from "@/lib/auth";
-import { flagEmoji } from "@/lib/flags";
+import FlagIcon from "@/components/FlagIcon";
 
 export const dynamic = "force-dynamic";
 
-function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+// Background colour for a race result cell, based on finishing position.
+function resultColor(rank: number | null, retired: boolean): string {
+  if (retired) return "#EFCFFF";
+  if (rank === 1) return "#FFFFBF";
+  if (rank === 2) return "#DFDFDF";
+  if (rank === 3) return "#FFDF9F";
+  if (rank !== null && rank >= 4 && rank <= 10) return "#DFFFDF";
+  return "#CFCFFF";
 }
 
 export default async function ChampionshipPage({
@@ -46,7 +50,7 @@ export default async function ChampionshipPage({
         <table className="w-full border-collapse text-sm">
           <thead className="bg-neutral-900 text-neutral-400">
             <tr>
-              <th className="sticky left-0 z-10 bg-neutral-900 px-3 py-3 text-left font-medium">
+              <th className="sticky left-0 z-10 w-10 bg-neutral-900 px-3 py-3 text-left font-medium">
                 #
               </th>
               <th className="sticky left-10 z-10 bg-neutral-900 px-3 py-3 text-left font-medium">
@@ -59,38 +63,57 @@ export default async function ChampionshipPage({
                   title={race.track.name}
                 >
                   <div className="flex flex-col items-center leading-tight">
-                    <span className="text-base">
-                      {flagEmoji(race.track.country_code)}
-                    </span>
+                    <FlagIcon
+                      countryCode={race.track.country_code}
+                      className="text-base"
+                    />
                     <span>{race.track.short_code}</span>
                   </div>
                 </th>
               ))}
-              <th className="px-3 py-3 text-center font-medium">Points</th>
+              <th className="sticky right-0 z-10 bg-neutral-900 px-3 py-3 text-center font-medium">
+                Points
+              </th>
             </tr>
           </thead>
           <tbody>
             {standings.map((row) => (
               <tr key={row.racer.id} className="border-t border-neutral-800">
-                <td className="sticky left-0 z-10 bg-neutral-950 px-3 py-3 text-neutral-400">
+                <td className="sticky left-0 z-10 w-10 bg-neutral-950 px-3 py-3 text-neutral-400">
                   {row.position}
                 </td>
                 <td className="sticky left-10 z-10 whitespace-nowrap bg-neutral-950 px-3 py-3 font-medium">
-                  <span className="mr-2">{flagEmoji(row.racer.country_code)}</span>
+                  <FlagIcon
+                    countryCode={row.racer.country_code}
+                    className="mr-2"
+                  />
                   {row.racer.first_name} {row.racer.last_name}
                 </td>
                 {races.map((race) => {
-                  const rank = row.ranks[race.id];
+                  const cell = row.cells[race.id];
+                  if (!cell) {
+                    return (
+                      <td
+                        key={race.id}
+                        className="px-3 py-3 text-center text-neutral-300"
+                      >
+                        –
+                      </td>
+                    );
+                  }
                   return (
                     <td
                       key={race.id}
-                      className="px-3 py-3 text-center text-neutral-300"
+                      className="px-3 py-3 text-center font-bold text-neutral-900"
+                      style={{
+                        backgroundColor: resultColor(cell.rank, cell.retired),
+                      }}
                     >
-                      {rank ? ordinal(rank) : "–"}
+                      {cell.retired ? "RET" : cell.rank}
                     </td>
                   );
                 })}
-                <td className="px-3 py-3 text-center font-semibold">
+                <td className="sticky right-0 z-10 bg-neutral-950 px-3 py-3 text-center font-semibold">
                   {row.points}
                 </td>
               </tr>
@@ -123,9 +146,10 @@ export default async function ChampionshipPage({
                   <span className="mr-2 text-neutral-500">
                     Round {race.round}
                   </span>
-                  <span className="mr-2">
-                    {flagEmoji(race.track.country_code)}
-                  </span>
+                  <FlagIcon
+                    countryCode={race.track.country_code}
+                    className="mr-2"
+                  />
                   {race.track.name} ({race.track.short_code})
                 </span>
                 <Link

@@ -26,13 +26,13 @@ on conflict (short_code) do update
 
 -- Racers ---------------------------------------------------------------------
 insert into racers (first_name, last_name, country_code)
-select 'Gilbert', 'Holland-Lloyd', 'GB-ENG'
+select 'Gilbert', 'Holland-Lloyd', 'GB'
 where not exists (
   select 1 from racers where first_name = 'Gilbert' and last_name = 'Holland-Lloyd'
 );
 
 insert into racers (first_name, last_name, country_code)
-select 'Chris', 'Johnson', 'GB-ENG'
+select 'Chris', 'Johnson', 'GB'
 where not exists (
   select 1 from racers where first_name = 'Chris' and last_name = 'Johnson'
 );

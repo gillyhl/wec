@@ -32,7 +32,9 @@ export interface RaceResult {
   id: string;
   race_id: string;
   racer_id: string;
-  rank: number;
+  // null when the racer retired (DNF) — see `retired`.
+  rank: number | null;
+  retired: boolean;
 }
 
 export const ADMIN_EMAIL =

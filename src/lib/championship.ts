@@ -11,12 +11,18 @@ export interface RaceWithTrack extends Race {
   track: Track;
 }
 
+// A racer's result in a single race.
+export interface RaceCell {
+  rank: number | null;
+  retired: boolean;
+}
+
 export interface StandingsRow {
   racer: Racer;
   position: number;
   points: number;
-  // race_id -> rank in that race
-  ranks: Record<string, number>;
+  // race_id -> the racer's result in that race
+  cells: Record<string, RaceCell>;
 }
 
 export interface ChampionshipData {
@@ -59,7 +65,7 @@ export async function getChampionshipData(
   if (raceIds.length > 0) {
     const { data } = await supabase
       .from("race_results")
-      .select("id, race_id, racer_id, rank")
+      .select("id, race_id, racer_id, rank, retired")
       .in("race_id", raceIds)
       .returns<RaceResult[]>();
     results = data ?? [];
@@ -75,18 +81,18 @@ export async function getChampionshipData(
     (points ?? []).map((p) => [p.racer_id, p.points]),
   );
 
-  const ranksByRacer = new Map<string, Record<string, number>>();
+  const cellsByRacer = new Map<string, Record<string, RaceCell>>();
   for (const r of results) {
-    const existing = ranksByRacer.get(r.racer_id) ?? {};
-    existing[r.race_id] = r.rank;
-    ranksByRacer.set(r.racer_id, existing);
+    const existing = cellsByRacer.get(r.racer_id) ?? {};
+    existing[r.race_id] = { rank: r.rank, retired: r.retired };
+    cellsByRacer.set(r.racer_id, existing);
   }
 
   const standings: StandingsRow[] = (racers ?? [])
     .map((racer) => ({
       racer,
       points: pointsByRacer.get(racer.id) ?? 0,
-      ranks: ranksByRacer.get(racer.id) ?? {},
+      cells: cellsByRacer.get(racer.id) ?? {},
       position: 0,
     }))
     .sort((a, b) => {
