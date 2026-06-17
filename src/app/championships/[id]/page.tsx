@@ -95,6 +95,29 @@ export default async function ChampionshipPage({
                           className="text-base"
                         />
                         <span>{race.track.short_code}</span>
+                        {isAdmin && (
+                          <Link
+                            href={`/championships/${championship.id}/races/${race.id}`}
+                            title={`Edit ${race.track.name} results`}
+                            className="mt-0.5 text-neutral-600 hover:text-white"
+                            aria-label={`Edit ${race.track.name} results`}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-3 w-3"
+                              aria-hidden="true"
+                            >
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                            </svg>
+                          </Link>
+                        )}
                       </div>
                     </th>
                   ))}
@@ -162,38 +185,6 @@ export default async function ChampionshipPage({
             </tbody>
           </table>
         </div>
-      )}
-
-      {/* Admin: enter race results */}
-      {isAdmin && (
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold">Enter race results</h2>
-          <ul className="mt-3 divide-y divide-neutral-800 overflow-hidden rounded-lg border border-neutral-800">
-            {races.map((race) => (
-              <li
-                key={race.id}
-                className="flex items-center justify-between px-4 py-3"
-              >
-                <span>
-                  <span className="mr-2 text-neutral-500">
-                    Round {race.round}
-                  </span>
-                  <FlagIcon
-                    countryCode={race.track.country_code}
-                    className="mr-2"
-                  />
-                  {race.track.name} ({race.track.short_code})
-                </span>
-                <Link
-                  href={`/championships/${championship.id}/races/${race.id}`}
-                  className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
-                >
-                  Edit results
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
     </main>
   );
