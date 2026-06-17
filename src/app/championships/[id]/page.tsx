@@ -3,8 +3,25 @@ import { notFound } from "next/navigation";
 import { getChampionshipData } from "@/lib/championship";
 import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
+import PointsProgressionChart from "@/components/PointsProgressionChart";
 
 export const dynamic = "force-dynamic";
+
+// Distinct line colours for the progression chart, cycled across racers.
+const SERIES_COLORS = [
+  "#60a5fa",
+  "#f87171",
+  "#34d399",
+  "#fbbf24",
+  "#a78bfa",
+  "#f472b6",
+  "#22d3ee",
+  "#a3e635",
+  "#fb923c",
+  "#e879f9",
+  "#2dd4bf",
+  "#facc15",
+];
 
 // Background colour for a race result cell, based on finishing position.
 function resultColor(rank: number | null, retired: boolean): string {
@@ -188,6 +205,27 @@ export default async function ChampionshipPage({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Points progression per race */}
+      {standings.length > 0 && races.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-lg font-semibold">Points progression</h2>
+          <p className="mt-1 text-sm text-neutral-400">
+            Cumulative championship points after each race.
+          </p>
+          <div className="mt-4 rounded-lg border border-neutral-800 p-4">
+            <PointsProgressionChart
+              raceLabels={races.map((race) => race.track.short_code)}
+              series={standings.map((row, i) => ({
+                id: row.racer.id,
+                label: `${row.racer.first_name.charAt(0)}. ${row.racer.last_name}`,
+                color: SERIES_COLORS[i % SERIES_COLORS.length],
+                cumulative: row.cumulative,
+              }))}
+            />
+          </div>
         </div>
       )}
     </main>

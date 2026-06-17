@@ -23,6 +23,28 @@ export interface StandingsRow {
   points: number;
   // race_id -> the racer's result in that race
   cells: Record<string, RaceCell>;
+  // Cumulative championship points after each race, aligned to `races` order.
+  cumulative: number[];
+}
+
+// Standard WEC/F1-style points for the top 10 finishers. Mirrors the
+// points_for_rank SQL function so the UI can compute per-race points.
+const POINTS_BY_RANK: Record<number, number> = {
+  1: 25,
+  2: 18,
+  3: 15,
+  4: 12,
+  5: 10,
+  6: 8,
+  7: 6,
+  8: 4,
+  9: 2,
+  10: 1,
+};
+
+export function pointsForRank(rank: number | null): number {
+  if (rank === null) return 0;
+  return POINTS_BY_RANK[rank] ?? 0;
 }
 
 export interface ChampionshipData {
@@ -88,13 +110,26 @@ export async function getChampionshipData(
     cellsByRacer.set(r.racer_id, existing);
   }
 
+  const orderedRaces = races ?? [];
+
   const standings: StandingsRow[] = (racers ?? [])
-    .map((racer) => ({
-      racer,
-      points: pointsByRacer.get(racer.id) ?? 0,
-      cells: cellsByRacer.get(racer.id) ?? {},
-      position: 0,
-    }))
+    .map((racer) => {
+      const cells = cellsByRacer.get(racer.id) ?? {};
+      // Walk the races in round order, accumulating points per race.
+      let running = 0;
+      const cumulative = orderedRaces.map((race) => {
+        const cell = cells[race.id];
+        running += cell ? pointsForRank(cell.rank) : 0;
+        return running;
+      });
+      return {
+        racer,
+        points: pointsByRacer.get(racer.id) ?? 0,
+        cells,
+        cumulative,
+        position: 0,
+      };
+    })
     .sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
       return a.racer.last_name.localeCompare(b.racer.last_name);
