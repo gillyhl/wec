@@ -10,9 +10,10 @@ Track WEC championships between drivers. Built with **Next.js (App Router)** and
   championship position, with country flags), each race as a column (track flag +
   short code, showing the racer's finishing position), and total championship
   points in the final column.
-- **Admin auth** — Supabase magic-link login. Only `gilberthl93@gmail.com` may
-  create championships or enter race results (enforced both in the UI and by
-  Postgres Row Level Security).
+- **Admin auth** — Supabase login via Google OAuth or a magic link. Only
+  `gilberthl93@gmail.com` may create championships or enter race results
+  (enforced both in the UI and by Postgres Row Level Security), regardless of
+  which method is used to sign in.
 - **Create championship** — generates a random race order that always starts at
   Imola (IMO), followed by every other track in a random order.
 - **Automatic points** — entering a race result recomputes championship points
@@ -82,6 +83,16 @@ after `npm install` (the `db:*` npm scripts wrap it).
    http://127.0.0.1:54324 and click the link. You can now create championships and
    enter results.
 
+   Magic-link sign-in needs no extra setup locally. The **Continue with Google**
+   button is disabled in the local stack by default because Google OAuth needs
+   real credentials. To test it locally, create OAuth credentials in the
+   [Google Cloud console](https://console.cloud.google.com/apis/credentials)
+   with redirect URI `http://127.0.0.1:54321/auth/v1/callback`, put the client
+   ID/secret in `.env.local` (`SUPABASE_AUTH_GOOGLE_CLIENT_ID` /
+   `SUPABASE_AUTH_GOOGLE_SECRET`), set `enabled = true` under
+   `[auth.external.google]` in `supabase/config.toml`, and restart with
+   `npm run db:start`.
+
 ### Handy commands
 
 | Command              | What it does                                              |
@@ -105,7 +116,16 @@ After editing `supabase/migrations/` or `supabase/seed.sql`, run
    in that order.
 
 3. **Configure auth**: in Supabase → Authentication → URL Configuration, add your
-   production URL and `https://your-app.vercel.app/auth/confirm` as a redirect URL.
+   production URL and both `https://your-app.vercel.app/auth/confirm` and
+   `https://your-app.vercel.app/auth/callback` as redirect URLs.
+
+   To enable Google sign-in in production, go to Supabase → Authentication →
+   Providers → Google and enter a client ID/secret from the
+   [Google Cloud console](https://console.cloud.google.com/apis/credentials).
+   Add `https://<project-ref>.supabase.co/auth/v1/callback` as an authorized
+   redirect URI on the Google credential. (The hosted provider is configured in
+   the dashboard, not in `supabase/config.toml` — that file only governs the
+   local CLI stack.)
 
 4. **Deploy on Vercel.** Import the repo and set the environment variables:
 

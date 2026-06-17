@@ -33,12 +33,16 @@ port = 54324
 
 [auth]
 enabled = true
-# The base site URL and the redirect targets the magic link is allowed to use.
+# The base site URL and the redirect targets the magic link / OAuth flow are
+# allowed to use.
 site_url = "https://wec-zeta.vercel.app"
 additional_redirect_urls = [
   "https://wec-zeta.vercel.app/auth/confirm",
+  "https://wec-zeta.vercel.app/auth/callback",
   "http://localhost:3000/auth/confirm",
+  "http://localhost:3000/auth/callback",
   "http://127.0.0.1:3000/auth/confirm",
+  "http://127.0.0.1:3000/auth/callback",
 ]
 jwt_expiry = 3600
 enable_signup = true
@@ -55,6 +59,22 @@ secure_password_change = false
 # token_hash-based /auth/confirm route can't verify (it returns error=invalid).
 [auth.email.template.magic_link]
 content_path = "./supabase/templates/magic_link.html"
+
+# Google OAuth. This block only configures the LOCAL Supabase CLI stack — the
+# hosted project's Google provider is configured in the Supabase Dashboard
+# (Authentication -> Providers), not here.
+#
+# Local Google sign-in needs real Google Cloud OAuth credentials, so it's off
+# by default: magic-link sign-in works locally with zero setup (links land in
+# Inbucket at http://127.0.0.1:54324). To test Google locally, set
+# SUPABASE_AUTH_GOOGLE_CLIENT_ID / SUPABASE_AUTH_GOOGLE_SECRET in .env.local,
+# flip `enabled` to true, and restart `npm run db:start`. In the Google Cloud
+# console add this authorized redirect URI:
+#   http://127.0.0.1:54321/auth/v1/callback
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
 
 # This app uses Next.js server actions/route handlers, not Supabase Edge
 # Functions, so the Deno edge runtime container is disabled. It also avoids a
