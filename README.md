@@ -60,14 +60,14 @@ after `npm install` (the `db:*` npm scripts wrap it).
    | Email inbox        | http://127.0.0.1:54324       |
 
 3. **Environment variables.** Copy the local template and you're done — it is
-   pre-filled with the standard local API URL and anon key:
+   pre-filled with the standard local API URL and publishable key:
 
    ```bash
    cp .env.local.example .env.local
    ```
 
-   If `npm run db:status` ever shows a different anon key, paste it into
-   `.env.local` as `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+   If `npm run db:status` ever shows a different key, paste it into
+   `.env.local` as `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
 4. **Run the app:**
 
@@ -111,7 +111,7 @@ After editing `supabase/migrations/` or `supabase/seed.sql`, run
 
    ```
    NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=<project anon key>
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
    NEXT_PUBLIC_ADMIN_EMAIL=gilberthl93@gmail.com
    ```
 
