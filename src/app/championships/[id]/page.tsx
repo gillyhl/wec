@@ -56,21 +56,21 @@ export default async function ChampionshipPage({
           <table className="shrink-0 border-collapse text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
               <tr className="h-16">
-                <th className="px-1.5 align-bottom text-left font-medium sm:px-3">
+                <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
                   #
                 </th>
-                <th className="px-1.5 align-bottom text-left font-medium sm:px-3">
+                <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
                   Racer
                 </th>
               </tr>
             </thead>
             <tbody>
               {standings.map((row) => (
-                <tr key={row.racer.id} className="h-12 border-t border-neutral-800">
-                  <td className="px-1.5 text-neutral-400 sm:px-3">
+                <tr key={row.racer.id} className="h-12">
+                  <td className="border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
                     {row.position}
                   </td>
-                  <td className="whitespace-nowrap px-1.5 font-medium sm:px-3">
+                  <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
                     <FlagIcon
                       countryCode={row.racer.country_code}
                       className="mr-1.5 sm:mr-2"
@@ -90,13 +90,13 @@ export default async function ChampionshipPage({
 
           {/* Scrollable middle: race results */}
           <div className="flex-1 overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="w-full table-fixed border-collapse text-sm">
               <thead className="bg-neutral-900 text-neutral-400">
                 <tr className="h-16">
                   {races.map((race) => (
                     <th
                       key={race.id}
-                      className="px-1.5 align-bottom text-center font-medium sm:px-3"
+                      className="w-14 border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:w-16 sm:px-3"
                       title={race.track.name}
                     >
                       <div className="flex flex-col items-center leading-tight">
@@ -135,17 +135,14 @@ export default async function ChampionshipPage({
               </thead>
               <tbody>
                 {standings.map((row) => (
-                  <tr
-                    key={row.racer.id}
-                    className="h-12 border-t border-neutral-800"
-                  >
+                  <tr key={row.racer.id} className="h-12">
                     {races.map((race) => {
                       const cell = row.cells[race.id];
                       if (!cell) {
                         return (
                           <td
                             key={race.id}
-                            className="px-1.5 text-center text-neutral-300 sm:px-3"
+                            className="border border-neutral-800 px-1.5 text-center text-neutral-300 sm:px-3"
                           >
                             –
                           </td>
@@ -154,7 +151,7 @@ export default async function ChampionshipPage({
                       return (
                         <td
                           key={race.id}
-                          className="px-1.5 text-center font-bold text-neutral-900 sm:px-3"
+                          className="border border-neutral-800 px-1.5 text-center font-bold text-neutral-900 sm:px-3"
                           style={{
                             backgroundColor: resultColor(
                               cell.rank,
@@ -176,18 +173,15 @@ export default async function ChampionshipPage({
           <table className="shrink-0 border-collapse text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
               <tr className="h-16">
-                <th className="px-1.5 align-bottom text-center font-medium sm:px-3">
+                <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:px-3">
                   Points
                 </th>
               </tr>
             </thead>
             <tbody>
               {standings.map((row) => (
-                <tr
-                  key={row.racer.id}
-                  className="h-12 border-t border-neutral-800"
-                >
-                  <td className="px-1.5 text-center font-semibold sm:px-3">
+                <tr key={row.racer.id} className="h-12">
+                  <td className="border border-neutral-800 px-1.5 text-center font-semibold sm:px-3">
                     {row.points}
                   </td>
                 </tr>
