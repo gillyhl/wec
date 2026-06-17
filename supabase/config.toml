@@ -34,8 +34,9 @@ port = 54324
 [auth]
 enabled = true
 # The base site URL and the redirect targets the magic link is allowed to use.
-site_url = "http://localhost:3000"
+site_url = "https://wec-zeta.vercel.app"
 additional_redirect_urls = [
+  "https://wec-zeta.vercel.app/auth/confirm",
   "http://localhost:3000/auth/confirm",
   "http://127.0.0.1:3000/auth/confirm",
 ]
