@@ -135,6 +135,74 @@ export async function saveRaceResults(formData: FormData) {
   redirect(`/championships/${championshipId}`);
 }
 
+// Marks a championship as finished. Only permitted once every race has at least
+// one result recorded, since the final standings must be settled before a
+// champion can be declared.
+export async function completeChampionship(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const championshipId = String(formData.get("championship_id") ?? "");
+  if (!championshipId) throw new Error("Missing championship reference");
+
+  const supabase = await createClient();
+
+  const { data: races } = await supabase
+    .from("races")
+    .select("id")
+    .eq("championship_id", championshipId)
+    .returns<{ id: string }[]>();
+
+  const raceIds = (races ?? []).map((r) => r.id);
+  if (raceIds.length === 0) {
+    throw new Error("Championship has no races to complete.");
+  }
+
+  const { data: results } = await supabase
+    .from("race_results")
+    .select("race_id")
+    .in("race_id", raceIds)
+    .returns<{ race_id: string }[]>();
+
+  const racesWithResults = new Set((results ?? []).map((r) => r.race_id));
+  const allHaveResults = raceIds.every((id) => racesWithResults.has(id));
+  if (!allHaveResults) {
+    throw new Error(
+      "Every race must have a result before the championship can be completed.",
+    );
+  }
+
+  const { error } = await supabase
+    .from("championships")
+    .update({ status: "finished" })
+    .eq("id", championshipId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  revalidatePath(`/championships/${championshipId}`);
+  redirect(`/championships/${championshipId}`);
+}
+
+// Permanently deletes a championship. Its races, results and points rows are
+// removed automatically by the ON DELETE CASCADE foreign keys.
+export async function deleteChampionship(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const championshipId = String(formData.get("championship_id") ?? "");
+  if (!championshipId) throw new Error("Missing championship reference");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("championships")
+    .delete()
+    .eq("id", championshipId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  redirect("/");
+}
+
 // Clears all of a race's results, removing its scores from the championship
 // while keeping the race itself in the schedule. Deleting the race_results rows
 // fires the points-recompute trigger automatically.

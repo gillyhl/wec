@@ -72,6 +72,17 @@ function compareCountback(a: number[], b: number[]): number {
   return 0;
 }
 
+// The championship winner: the racer in first place, once any points have been
+// scored. Standings are pre-sorted (points, then countback), so this is the top
+// row. Returns null when nothing has been scored yet.
+export function championshipWinner(
+  standings: StandingsRow[],
+): StandingsRow | null {
+  const top = standings[0];
+  if (!top || top.points <= 0) return null;
+  return top;
+}
+
 export interface ChampionshipData {
   championship: Championship;
   races: RaceWithTrack[];

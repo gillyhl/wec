@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getChampionshipData } from "@/lib/championship";
+import {
+  championshipWinner,
+  getChampionshipData,
+  pointsForRank,
+} from "@/lib/championship";
+import type { RaceCell } from "@/lib/championship";
 import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import PointsProgressionChart from "@/components/PointsProgressionChart";
+import ChampionshipAdminControls from "@/components/ChampionshipAdminControls";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +28,21 @@ const SERIES_COLORS = [
   "#2dd4bf",
   "#facc15",
 ];
+
+// Aggregate per-racer counting stats from their race results.
+function racerStats(cells: Record<string, RaceCell>) {
+  let wins = 0;
+  let podiums = 0;
+  let pointsFinishes = 0;
+  let retirements = 0;
+  for (const cell of Object.values(cells)) {
+    if (cell.retired) retirements++;
+    if (cell.rank === 1) wins++;
+    if (cell.rank !== null && cell.rank <= 3) podiums++;
+    if (pointsForRank(cell.rank) > 0) pointsFinishes++;
+  }
+  return { wins, podiums, pointsFinishes, retirements };
+}
 
 // Background colour for a race result cell, based on finishing position.
 function resultColor(rank: number | null, retired: boolean): string {
@@ -47,6 +68,17 @@ export default async function ChampionshipPage({
   if (!data) notFound();
   const { championship, races, standings } = data;
 
+  // A championship can be completed once every race has at least one result.
+  const racesWithResults = new Set<string>();
+  for (const row of standings) {
+    for (const raceId of Object.keys(row.cells)) racesWithResults.add(raceId);
+  }
+  const allRacesHaveResults =
+    races.length > 0 && races.every((race) => racesWithResults.has(race.id));
+
+  const winner =
+    championship.status === "finished" ? championshipWinner(standings) : null;
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
       <Link href="/" className="text-sm text-neutral-400 hover:text-white">
@@ -61,6 +93,29 @@ export default async function ChampionshipPage({
           </p>
         </div>
       </div>
+
+      {winner && (
+        <div className="mt-6 flex items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+          <span className="text-2xl" aria-hidden="true">
+            🏆
+          </span>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-yellow-500/80">
+              Champion
+            </p>
+            <p className="text-lg font-bold">
+              <FlagIcon
+                countryCode={winner.racer.country_code}
+                className="mr-2"
+              />
+              {winner.racer.first_name} {winner.racer.last_name}
+              <span className="ml-2 text-sm font-normal text-neutral-400">
+                {winner.points} pts
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Standings matrix */}
       {standings.length === 0 ? (
@@ -208,6 +263,69 @@ export default async function ChampionshipPage({
         </div>
       )}
 
+      {/* Per-racer summary stats */}
+      {standings.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-lg font-semibold">Stats</h2>
+          <div className="mt-4 w-fit max-w-full overflow-x-auto rounded-lg border border-neutral-800">
+            <table className="table-fixed border-collapse text-sm">
+              <thead className="bg-neutral-900 text-neutral-400">
+                <tr>
+                  <th className="w-44 border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
+                    Racer
+                  </th>
+                  <th className="w-20 border border-neutral-800 px-1.5 py-2 text-center font-medium leading-tight sm:px-3">
+                    Wins
+                  </th>
+                  <th className="w-20 border border-neutral-800 px-1.5 py-2 text-center font-medium leading-tight sm:px-3">
+                    Podiums
+                  </th>
+                  <th className="w-20 border border-neutral-800 px-1.5 py-2 text-center font-medium leading-tight sm:px-3">
+                    Points finishes
+                  </th>
+                  <th className="w-20 border border-neutral-800 px-1.5 py-2 text-center font-medium leading-tight sm:px-3">
+                    Retirements
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {standings.map((row) => {
+                  const stats = racerStats(row.cells);
+                  return (
+                    <tr key={row.racer.id} className="h-12">
+                      <td className="w-44 whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
+                        <FlagIcon
+                          countryCode={row.racer.country_code}
+                          className="mr-1.5 sm:mr-2"
+                        />
+                        <span className="sm:hidden">
+                          {row.racer.first_name.charAt(0)}. {row.racer.last_name}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {row.racer.first_name} {row.racer.last_name}
+                        </span>
+                      </td>
+                      <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
+                        {stats.wins}
+                      </td>
+                      <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
+                        {stats.podiums}
+                      </td>
+                      <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
+                        {stats.pointsFinishes}
+                      </td>
+                      <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
+                        {stats.retirements}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Points progression per race */}
       {standings.length > 0 && races.length > 0 && (
         <div className="mt-10">
@@ -227,6 +345,15 @@ export default async function ChampionshipPage({
             />
           </div>
         </div>
+      )}
+
+      {isAdmin && (
+        <ChampionshipAdminControls
+          championshipId={championship.id}
+          championshipName={championship.name}
+          status={championship.status}
+          canComplete={allRacesHaveResults}
+        />
       )}
     </main>
   );

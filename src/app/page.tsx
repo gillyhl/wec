@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import {
+  championshipWinner,
+  getChampionshipData,
+} from "@/lib/championship";
+import FlagIcon from "@/components/FlagIcon";
 import type { Championship } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +30,16 @@ export default async function HomePage() {
     .select("id, name, status, created_at")
     .order("created_at", { ascending: false })
     .returns<Championship[]>();
+
+  // Resolve the champion for each finished championship so the list can show it.
+  const finished = (championships ?? []).filter((c) => c.status === "finished");
+  const winnerEntries = await Promise.all(
+    finished.map(async (c) => {
+      const data = await getChampionshipData(c.id);
+      return [c.id, data ? championshipWinner(data.standings) : null] as const;
+    }),
+  );
+  const winnerById = new Map(winnerEntries);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
@@ -52,6 +67,7 @@ export default async function HomePage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Championship</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Winner</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -71,6 +87,26 @@ export default async function HomePage() {
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={c.status} />
+                  </td>
+                  <td className="px-4 py-3 text-neutral-300">
+                    {(() => {
+                      const winner = winnerById.get(c.id);
+                      if (!winner) {
+                        return <span className="text-neutral-600">—</span>;
+                      }
+                      return (
+                        <span className="whitespace-nowrap">
+                          <span className="mr-1.5" aria-hidden="true">
+                            🏆
+                          </span>
+                          <FlagIcon
+                            countryCode={winner.racer.country_code}
+                            className="mr-1.5"
+                          />
+                          {winner.racer.first_name} {winner.racer.last_name}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-right text-neutral-500">
                     <Link href={`/championships/${c.id}`}>View →</Link>
