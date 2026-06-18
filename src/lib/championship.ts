@@ -47,6 +47,31 @@ export function pointsForRank(rank: number | null): number {
   return POINTS_BY_RANK[rank] ?? 0;
 }
 
+// Builds a countback histogram: counts[i] is how many times the racer
+// finished in position i+1 (counts[0] = wins, counts[1] = 2nd places, ...).
+function rankCounts(cells: Record<string, RaceCell>): number[] {
+  const counts: number[] = [];
+  for (const cell of Object.values(cells)) {
+    if (cell.rank !== null && cell.rank >= 1) {
+      counts[cell.rank - 1] = (counts[cell.rank - 1] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
+// Tie-breaker for racers level on points. The racer with more 1st places is
+// classified higher; if equal, compare 2nd places, then 3rd, and so on.
+// Returns a negative number if `a` ranks ahead of `b`, positive if behind,
+// and 0 if they are genuinely tied (and so share a position).
+function compareCountback(a: number[], b: number[]): number {
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const diff = (b[i] ?? 0) - (a[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 export interface ChampionshipData {
   championship: Championship;
   races: RaceWithTrack[];
@@ -112,7 +137,7 @@ export async function getChampionshipData(
 
   const orderedRaces = races ?? [];
 
-  const standings: StandingsRow[] = (racers ?? [])
+  const sorted = (racers ?? [])
     .map((racer) => {
       const cells = cellsByRacer.get(racer.id) ?? {};
       // Walk the races in round order, accumulating points per race.
@@ -126,15 +151,32 @@ export async function getChampionshipData(
         racer,
         points: pointsByRacer.get(racer.id) ?? 0,
         cells,
+        counts: rankCounts(cells),
         cumulative,
         position: 0,
       };
     })
     .sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
+      const cb = compareCountback(a.counts, b.counts);
+      if (cb !== 0) return cb;
+      // Genuinely tied: order alphabetically for a stable display only;
+      // they are assigned the same position below.
       return a.racer.last_name.localeCompare(b.racer.last_name);
-    })
-    .map((row, i) => ({ ...row, position: i + 1 }));
+    });
+
+  // Assign positions, giving racers who are level on both points and the
+  // countback the same position (e.g. two tied for 3rd, then next is 5th).
+  const standings: StandingsRow[] = sorted.map((row, i) => {
+    const prev = sorted[i - 1];
+    const tiedWithPrev =
+      prev !== undefined &&
+      prev.points === row.points &&
+      compareCountback(prev.counts, row.counts) === 0;
+    row.position = tiedWithPrev ? prev.position : i + 1;
+    const { counts: _counts, ...rest } = row;
+    return rest;
+  });
 
   return {
     championship,
