@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
-import { saveRaceResults } from "../../../actions";
+import DeleteRaceButton from "@/components/DeleteRaceButton";
+import { clearRaceResults, saveRaceResults } from "../../../actions";
 import type { Racer, RaceResult, Track } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +115,19 @@ export default async function RaceResultsPage({
         >
           Save results
         </button>
+      </form>
+
+      <form
+        action={clearRaceResults}
+        className="mt-8 border-t border-neutral-800 pt-6"
+      >
+        <input type="hidden" name="race_id" value={race.id} />
+        <input type="hidden" name="championship_id" value={id} />
+        <p className="mb-2 text-sm text-neutral-400">
+          Clear all results for this race, removing its scores from the
+          championship. The race stays in the schedule.
+        </p>
+        <DeleteRaceButton trackName={race.track.name} />
       </form>
     </main>
   );

@@ -134,3 +134,26 @@ export async function saveRaceResults(formData: FormData) {
   revalidatePath(`/championships/${championshipId}`);
   redirect(`/championships/${championshipId}`);
 }
+
+// Clears all of a race's results, removing its scores from the championship
+// while keeping the race itself in the schedule. Deleting the race_results rows
+// fires the points-recompute trigger automatically.
+export async function clearRaceResults(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const raceId = String(formData.get("race_id") ?? "");
+  const championshipId = String(formData.get("championship_id") ?? "");
+  if (!raceId || !championshipId) throw new Error("Missing race reference");
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("race_results")
+    .delete()
+    .eq("race_id", raceId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/championships/${championshipId}`);
+  redirect(`/championships/${championshipId}`);
+}
