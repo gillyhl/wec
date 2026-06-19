@@ -171,7 +171,7 @@ export default async function ChampionshipPage({
                   {races.map((race) => (
                     <th
                       key={race.id}
-                      className="w-14 border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:w-16 sm:px-3"
+                      className="w-7 border border-neutral-800 px-0.5 align-bottom text-center font-medium sm:w-9 sm:px-1"
                       title={race.track.name}
                     >
                       <div className="flex flex-col items-center leading-tight">
@@ -217,7 +217,7 @@ export default async function ChampionshipPage({
                         return (
                           <td
                             key={race.id}
-                            className="border border-neutral-800 px-1.5 text-center text-neutral-300 sm:px-3"
+                            className="border border-neutral-800 px-0.5 text-center text-neutral-300 sm:px-1"
                           >
                             –
                           </td>
@@ -226,7 +226,7 @@ export default async function ChampionshipPage({
                       return (
                         <td
                           key={race.id}
-                          className="border border-neutral-800 px-1.5 text-center font-bold text-neutral-900 sm:px-3"
+                          className="border border-neutral-800 px-0.5 text-center font-bold text-neutral-900 sm:px-1"
                           style={{
                             backgroundColor: resultColor(
                               cell.rank,
