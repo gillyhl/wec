@@ -81,7 +81,7 @@ export default async function ChampionshipPage({
     championship.status === "finished" ? championshipWinner(standings) : null;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
+    <main className="mx-auto max-w-7xl px-4 py-10">
       <Link href="/" className="text-sm text-neutral-400 hover:text-white">
         ← All championships
       </Link>
@@ -171,7 +171,7 @@ export default async function ChampionshipPage({
                   {races.map((race) => (
                     <th
                       key={race.id}
-                      className="w-7 border border-neutral-800 px-0.5 align-bottom text-center font-medium sm:w-9 sm:px-1"
+                      className="w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-11 sm:px-1.5"
                       title={race.track.name}
                     >
                       <div className="flex flex-col items-center leading-tight">
@@ -217,7 +217,7 @@ export default async function ChampionshipPage({
                         return (
                           <td
                             key={race.id}
-                            className="border border-neutral-800 px-0.5 text-center text-neutral-300 sm:px-1"
+                            className="border border-neutral-800 px-1 text-center text-neutral-300 sm:px-1.5"
                           >
                             –
                           </td>
@@ -226,7 +226,7 @@ export default async function ChampionshipPage({
                       return (
                         <td
                           key={race.id}
-                          className="border border-neutral-800 px-0.5 text-center font-bold text-neutral-900 sm:px-1"
+                          className="border border-neutral-800 px-1 text-center font-bold text-neutral-900 sm:px-1.5"
                           style={{
                             backgroundColor: resultColor(
                               cell.rank,
