@@ -89,61 +89,56 @@ export default async function StatsPage() {
         </section>
       )}
 
-      {/* Per-track records, grouped by game */}
+      {/* Per-track records, one table per game, ordered by points scored */}
       {series.map((s) => (
         <section key={s.series} className="mt-12">
           <h2 className="text-lg font-semibold">
             {RACING_SERIES_LABELS[s.series]} — tracks
           </h2>
-
-          <div className="mt-4 space-y-8">
-            {s.tracks.map(({ track, racers }) => (
-              <div key={track.id}>
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-200">
-                  <FlagIcon countryCode={track.country_code} />
-                  {track.name}
-                  <span className="text-neutral-500">({track.short_code})</span>
-                </h3>
-                <div className="mt-2 w-fit max-w-full overflow-x-auto rounded-lg border border-neutral-800">
-                  <table className="border-collapse text-sm">
-                    <thead className="bg-neutral-900 text-neutral-400">
-                      <tr>
-                        <th className="border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
-                          Racer
-                        </th>
-                        <th className={headCell}>Races</th>
-                        <th className={headCell}>Best finish</th>
-                        <th className={headCell}>Wins</th>
-                        <th className={headCell}>Podiums</th>
-                        <th className={headCell}>Points finishes</th>
-                        <th className={headCell}>Retirements</th>
-                        <th className={headCell}>Points</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {racers.map((row) => (
-                        <tr key={row.racer.id} className="h-12">
-                          <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
-                            <RacerName racer={row.racer} />
-                          </td>
-                          <td className={numCell}>{row.races}</td>
-                          <td className={numCell}>
-                            {row.bestFinish ?? "—"}
-                          </td>
-                          <td className={numCell}>{row.wins}</td>
-                          <td className={numCell}>{row.podiums}</td>
-                          <td className={numCell}>{row.pointsFinishes}</td>
-                          <td className={numCell}>{row.retirements}</td>
-                          <td className={`${numCell} font-semibold`}>
-                            {row.points}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
+          <div className="mt-4 w-fit max-w-full overflow-x-auto rounded-lg border border-neutral-800">
+            <table className="border-collapse text-sm">
+              <thead className="bg-neutral-900 text-neutral-400">
+                <tr>
+                  <th className="border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
+                    Track
+                  </th>
+                  <th className="border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
+                    Racer
+                  </th>
+                  <th className={headCell}>Races</th>
+                  <th className={headCell}>Best finish</th>
+                  <th className={headCell}>Wins</th>
+                  <th className={headCell}>Podiums</th>
+                  <th className={headCell}>Points finishes</th>
+                  <th className={headCell}>Retirements</th>
+                  <th className={headCell}>Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {s.rows.map((row) => (
+                  <tr key={`${row.track.id}-${row.racer.id}`} className="h-12">
+                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
+                      <FlagIcon
+                        countryCode={row.track.country_code}
+                        className="mr-1.5 sm:mr-2"
+                      />
+                      <span className="sm:hidden">{row.track.short_code}</span>
+                      <span className="hidden sm:inline">{row.track.name}</span>
+                    </td>
+                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
+                      <RacerName racer={row.racer} />
+                    </td>
+                    <td className={numCell}>{row.races}</td>
+                    <td className={numCell}>{row.bestFinish ?? "—"}</td>
+                    <td className={numCell}>{row.wins}</td>
+                    <td className={numCell}>{row.podiums}</td>
+                    <td className={numCell}>{row.pointsFinishes}</td>
+                    <td className={numCell}>{row.retirements}</td>
+                    <td className={`${numCell} font-semibold`}>{row.points}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       ))}

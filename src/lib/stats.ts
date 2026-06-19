@@ -19,7 +19,8 @@ export interface RacerTotals {
 }
 
 // A racer's record at a single track (across every championship on that game).
-export interface RacerTrackStats {
+export interface TrackRacerRow {
+  track: Track;
   racer: Racer;
   races: number;
   // Best (lowest) finishing position; null if the racer only ever retired.
@@ -31,14 +32,10 @@ export interface RacerTrackStats {
   points: number;
 }
 
-export interface TrackGroup {
-  track: Track;
-  racers: RacerTrackStats[];
-}
-
+// One table per game: every racer-at-track row, ordered by points scored.
 export interface SeriesTrackStats {
   series: RacingSeries;
-  tracks: TrackGroup[];
+  rows: TrackRacerRow[];
 }
 
 export interface StatsData {
@@ -79,10 +76,8 @@ export async function getStatsData(): Promise<StatsData> {
   );
 
   const racerTotals = new Map<string, RacerTotals>();
-  const trackMap = new Map<
-    string,
-    { track: Track; racers: Map<string, RacerTrackStats> }
-  >();
+  // key: `${trackId}|${racerId}` -> that racer's running record at that track.
+  const trackRows = new Map<string, TrackRacerRow>();
 
   const racerTotal = (racer: Racer): RacerTotals => {
     let t = racerTotals.get(racer.id);
@@ -102,15 +97,12 @@ export async function getStatsData(): Promise<StatsData> {
     return t;
   };
 
-  const trackRacer = (track: Track, racer: Racer): RacerTrackStats => {
-    let group = trackMap.get(track.id);
-    if (!group) {
-      group = { track, racers: new Map() };
-      trackMap.set(track.id, group);
-    }
-    let s = group.racers.get(racer.id);
+  const trackRacer = (track: Track, racer: Racer): TrackRacerRow => {
+    const key = `${track.id}|${racer.id}`;
+    let s = trackRows.get(key);
     if (!s) {
       s = {
+        track,
         racer,
         races: 0,
         bestFinish: null,
@@ -120,7 +112,7 @@ export async function getStatsData(): Promise<StatsData> {
         retirements: 0,
         points: 0,
       };
-      group.racers.set(racer.id, s);
+      trackRows.set(key, s);
     }
     return s;
   };
@@ -170,18 +162,24 @@ export async function getStatsData(): Promise<StatsData> {
 
   const racerTotalsArr = [...racerTotals.values()].sort(byPointsThenWins);
 
-  const seriesMap = new Map<RacingSeries, TrackGroup[]>();
-  for (const group of trackMap.values()) {
-    const racers = [...group.racers.values()].sort(byPointsThenWins);
-    const arr = seriesMap.get(group.track.source) ?? [];
-    arr.push({ track: group.track, racers });
-    seriesMap.set(group.track.source, arr);
+  const seriesMap = new Map<RacingSeries, TrackRacerRow[]>();
+  for (const row of trackRows.values()) {
+    const arr = seriesMap.get(row.track.source) ?? [];
+    arr.push(row);
+    seriesMap.set(row.track.source, arr);
   }
 
   const series: SeriesTrackStats[] = [...seriesMap.entries()]
-    .map(([s, tracks]) => ({
+    .map(([s, rows]) => ({
       series: s,
-      tracks: tracks.sort((a, b) => a.track.name.localeCompare(b.track.name)),
+      // Order by points scored; fall back to wins, then track, then name.
+      rows: rows.sort(
+        (a, b) =>
+          b.points - a.points ||
+          b.wins - a.wins ||
+          a.track.name.localeCompare(b.track.name) ||
+          a.racer.last_name.localeCompare(b.racer.last_name),
+      ),
     }))
     .sort(
       (a, b) =>
