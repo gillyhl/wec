@@ -69,6 +69,9 @@ export default async function ChampionshipPage({
   if (!data) notFound();
   const { championship, races, standings } = data;
 
+  // Points of the championship leader; used to show how far each racer trails.
+  const leaderPoints = standings[0]?.points ?? 0;
+
   // A championship can be completed once every race has at least one result.
   const racesWithResults = new Set<string>();
   for (const row of standings) {
@@ -254,13 +257,21 @@ export default async function ChampionshipPage({
               </tr>
             </thead>
             <tbody>
-              {standings.map((row) => (
-                <tr key={row.racer.id} className="h-12">
-                  <td className="border border-neutral-800 px-1.5 text-center font-semibold sm:px-3">
-                    {row.points}
-                  </td>
-                </tr>
-              ))}
+              {standings.map((row) => {
+                const behind = leaderPoints - row.points;
+                return (
+                  <tr key={row.racer.id} className="h-12">
+                    <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
+                      <span className="font-semibold">{row.points}</span>
+                      {behind > 0 && (
+                        <span className="block text-xs font-normal text-neutral-500">
+                          −{behind}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
