@@ -98,7 +98,7 @@ export async function getChampionshipData(
 
   const { data: championship } = await supabase
     .from("championships")
-    .select("id, name, status, created_at")
+    .select("id, name, status, series, created_at")
     .eq("id", championshipId)
     .maybeSingle<Championship>();
 

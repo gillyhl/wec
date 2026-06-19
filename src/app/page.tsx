@@ -5,7 +5,7 @@ import {
   getChampionshipData,
 } from "@/lib/championship";
 import FlagIcon from "@/components/FlagIcon";
-import type { Championship } from "@/lib/types";
+import { RACING_SERIES_LABELS, type Championship } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export default async function HomePage() {
   const supabase = await createClient();
   const { data: championships, error } = await supabase
     .from("championships")
-    .select("id, name, status, created_at")
+    .select("id, name, status, series, created_at")
     .order("created_at", { ascending: false })
     .returns<Championship[]>();
 
@@ -66,6 +66,7 @@ export default async function HomePage() {
             <thead className="bg-neutral-900 text-neutral-400">
               <tr>
                 <th className="px-4 py-3 font-medium">Championship</th>
+                <th className="px-4 py-3 font-medium">Series</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Winner</th>
                 <th className="px-4 py-3" />
@@ -84,6 +85,9 @@ export default async function HomePage() {
                     >
                       {c.name}
                     </Link>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-300">
+                    {RACING_SERIES_LABELS[c.series]}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={c.status} />

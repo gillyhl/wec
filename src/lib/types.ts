@@ -1,10 +1,19 @@
 export type ChampionshipStatus = "current" | "finished";
 
+// Which racing game a track or championship belongs to.
+export type RacingSeries = "project_cars_2" | "iracing";
+
+export const RACING_SERIES_LABELS: Record<RacingSeries, string> = {
+  project_cars_2: "Project Cars 2",
+  iracing: "iRacing",
+};
+
 export interface Track {
   id: string;
   name: string;
   short_code: string;
   country_code: string;
+  source: RacingSeries;
 }
 
 export interface Racer {
@@ -18,6 +27,7 @@ export interface Championship {
   id: string;
   name: string;
   status: ChampionshipStatus;
+  series: RacingSeries;
   created_at: string;
 }
 

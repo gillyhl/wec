@@ -10,6 +10,7 @@ import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import PointsProgressionChart from "@/components/PointsProgressionChart";
 import ChampionshipAdminControls from "@/components/ChampionshipAdminControls";
+import { RACING_SERIES_LABELS } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -88,8 +89,10 @@ export default async function ChampionshipPage({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{championship.name}</h1>
-          <p className="mt-1 text-sm capitalize text-neutral-400">
-            {championship.status} · {races.length} races
+          <p className="mt-1 text-sm text-neutral-400">
+            {RACING_SERIES_LABELS[championship.series]} ·{" "}
+            <span className="capitalize">{championship.status}</span> ·{" "}
+            {races.length} races
           </p>
         </div>
       </div>

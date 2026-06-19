@@ -4,10 +4,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/lib/auth";
-import type { Track } from "@/lib/types";
+import type { RacingSeries, Track } from "@/lib/types";
 
-// The championship race order must always begin with this track.
+// Project Cars 2 championships must always begin their race order with this track.
 const FIRST_TRACK_CODE = "IMO";
+
+// iRacing championships run a schedule of a user-chosen length chosen from the
+// track pool, with no track repeated. Up to IRACING_COUNTRY_CAP_THRESHOLD races
+// at most IRACING_MAX_PER_COUNTRY tracks may come from the same country; longer
+// schedules drop that limit (there aren't enough countries to honour it).
+const IRACING_DEFAULT_RACES = 12;
+const IRACING_MAX_PER_COUNTRY = 3;
+const IRACING_COUNTRY_CAP_THRESHOLD = 20;
 
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -18,7 +26,54 @@ function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-// Creates a new championship with a random race order that always starts at IMO.
+// Project Cars 2 race order: IMO first, then every other track in random order.
+function projectCars2Schedule(tracks: Track[]): Track[] {
+  const firstTrack = tracks.find((t) => t.short_code === FIRST_TRACK_CODE);
+  if (!firstTrack) {
+    throw new Error(`The ${FIRST_TRACK_CODE} track is required but was not found.`);
+  }
+  const rest = shuffle(tracks.filter((t) => t.id !== firstTrack.id));
+  return [firstTrack, ...rest];
+}
+
+// iRacing race order: a random subset of `raceCount` tracks from the pool with
+// no repeated track. Schedules of IRACING_COUNTRY_CAP_THRESHOLD or fewer races
+// allow at most IRACING_MAX_PER_COUNTRY tracks from the same country; longer
+// ones lift that cap.
+function iracingSchedule(tracks: Track[], raceCount: number): Track[] {
+  if (raceCount > tracks.length) {
+    throw new Error(
+      `Only ${tracks.length} iRacing tracks are available, so a ${raceCount}-race ` +
+        `schedule with no repeated tracks is not possible.`,
+    );
+  }
+
+  const capPerCountry = raceCount <= IRACING_COUNTRY_CAP_THRESHOLD;
+  const selected: Track[] = [];
+  const perCountry: Record<string, number> = {};
+
+  for (const track of shuffle(tracks)) {
+    if (selected.length >= raceCount) break;
+    if (capPerCountry) {
+      const count = perCountry[track.country_code] ?? 0;
+      if (count >= IRACING_MAX_PER_COUNTRY) continue;
+      perCountry[track.country_code] = count + 1;
+    }
+    selected.push(track);
+  }
+
+  if (selected.length < raceCount) {
+    throw new Error(
+      `Could not build a ${raceCount}-race schedule with at most ` +
+        `${IRACING_MAX_PER_COUNTRY} tracks per country.`,
+    );
+  }
+
+  // The pool was already shuffled, so selection order is itself random.
+  return selected;
+}
+
+// Creates a new championship and its race schedule for the chosen series.
 export async function createChampionship(formData: FormData) {
   const { isAdmin } = await getAuth();
   if (!isAdmin) throw new Error("Not authorized");
@@ -26,30 +81,39 @@ export async function createChampionship(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Championship name is required");
 
+  const series = String(formData.get("series") ?? "") as RacingSeries;
+  if (series !== "project_cars_2" && series !== "iracing") {
+    throw new Error("A valid series must be selected");
+  }
+
   const supabase = await createClient();
 
   const { data: tracks, error: tracksError } = await supabase
     .from("tracks")
-    .select("id, name, short_code, country_code")
+    .select("id, name, short_code, country_code, source")
+    .eq("source", series)
     .returns<Track[]>();
 
   if (tracksError) throw new Error(tracksError.message);
   if (!tracks || tracks.length === 0) {
-    throw new Error("No tracks have been seeded yet.");
+    throw new Error("No tracks have been seeded for this series yet.");
   }
 
-  const firstTrack = tracks.find((t) => t.short_code === FIRST_TRACK_CODE);
-  if (!firstTrack) {
-    throw new Error(`The ${FIRST_TRACK_CODE} track is required but was not found.`);
+  let orderedTracks: Track[];
+  if (series === "iracing") {
+    const raw = String(formData.get("race_count") ?? "").trim();
+    const raceCount = raw === "" ? IRACING_DEFAULT_RACES : Number.parseInt(raw, 10);
+    if (!Number.isInteger(raceCount) || raceCount < 1) {
+      throw new Error("Number of races must be a positive whole number.");
+    }
+    orderedTracks = iracingSchedule(tracks, raceCount);
+  } else {
+    orderedTracks = projectCars2Schedule(tracks);
   }
-
-  // IMO first, then every other track in random order.
-  const rest = shuffle(tracks.filter((t) => t.id !== firstTrack.id));
-  const orderedTracks = [firstTrack, ...rest];
 
   const { data: championship, error: champError } = await supabase
     .from("championships")
-    .insert({ name, status: "current" })
+    .insert({ name, status: "current", series })
     .select("id")
     .single<{ id: string }>();
 
