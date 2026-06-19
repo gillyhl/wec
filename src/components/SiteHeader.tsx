@@ -4,6 +4,12 @@ import { getAuth } from "@/lib/auth";
 export default async function SiteHeader() {
   const { user, isAdmin } = await getAuth();
 
+  const statsLink = (
+    <Link href="/stats" className="text-neutral-400 hover:text-white">
+      Statistics
+    </Link>
+  );
+
   const newChampionshipLink = isAdmin ? (
     <Link
       href="/championships/new"
@@ -34,6 +40,7 @@ export default async function SiteHeader() {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-4 text-sm sm:flex">
+          {statsLink}
           {newChampionshipLink}
           {authAction}
         </nav>
@@ -61,6 +68,7 @@ export default async function SiteHeader() {
             </svg>
           </summary>
           <nav className="absolute right-0 z-10 mt-2 flex w-44 flex-col items-stretch gap-3 rounded-md border border-neutral-800 bg-neutral-950 p-3 shadow-lg">
+            {statsLink}
             {newChampionshipLink}
             {authAction}
           </nav>
