@@ -24,7 +24,9 @@ insert into wec.tracks (name, short_code, country_code, source) values
   ('A1 Ring', 'A1R', 'AT', 'project_cars_2'),
   ('Silverstone', 'SIL', 'GB', 'project_cars_2'),
   ('Laguna Seca', 'LAG', 'US', 'project_cars_2'),
-  ('Suzuka Circuit', 'SUZ', 'JP', 'project_cars_2')
+  ('Suzuka Circuit', 'SUZ', 'JP', 'project_cars_2'),
+  ('Brands Hatch', 'BRA', 'GB', 'project_cars_2'),
+  ('Donington Park', 'DON', 'GB', 'project_cars_2')
 on conflict (source, short_code) do update
   set name = excluded.name, country_code = excluded.country_code;
 
@@ -64,13 +66,13 @@ on conflict (source, short_code) do update
 
 -- Racers ---------------------------------------------------------------------
 insert into wec.racers (first_name, last_name, country_code)
-select 'Gilbert', 'Holland-Lloyd', 'GB'
+select 'Gilbert', 'Holland-Lloyd', 'HU'
 where not exists (
   select 1 from wec.racers where first_name = 'Gilbert' and last_name = 'Holland-Lloyd'
 );
 
 insert into wec.racers (first_name, last_name, country_code)
-select 'Chris', 'Johnson', 'GB'
+select 'Chris', 'Johnson', 'DE'
 where not exists (
   select 1 from wec.racers where first_name = 'Chris' and last_name = 'Johnson'
 );
