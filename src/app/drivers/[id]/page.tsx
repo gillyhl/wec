@@ -136,8 +136,9 @@ export default async function DriverPage({
               </tbody>
             </table>
 
-            {/* Scrollable middle: one column per round */}
-            <div className="flex-1 overflow-x-auto">
+            {/* Scrollable middle: one column per round. Pulled 1px left so its
+                border collapses onto the season table's rather than doubling. */}
+            <div className="-ml-px flex-1 overflow-x-auto">
               <table className="w-full table-fixed border-collapse text-sm">
                 <thead className="bg-neutral-900 text-neutral-400">
                   <tr className="h-16">
@@ -203,8 +204,9 @@ export default async function DriverPage({
               </table>
             </div>
 
-            {/* Frozen right: season points + finishing position */}
-            <table className="shrink-0 border-collapse text-sm">
+            {/* Frozen right: season points + finishing position. Pulled 1px left
+                so the seam onto the rounds table stays a single border. */}
+            <table className="-ml-px shrink-0 border-collapse text-sm">
               <thead className="bg-neutral-900 text-neutral-400">
                 <tr className="h-16">
                   <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:px-3">
@@ -216,28 +218,31 @@ export default async function DriverPage({
                 </tr>
               </thead>
               <tbody>
-                {seasons.map((season) => (
-                  <tr key={season.championship.id} className="h-14">
-                    <td className="border border-neutral-800 px-1.5 text-center font-semibold sm:px-3">
-                      {season.points}
-                    </td>
-                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 text-center sm:px-3">
-                      {season.position === 1 &&
-                        season.championship.status === "finished" && (
-                          <span className="mr-1" aria-hidden="true">
-                            🏆
-                          </span>
-                        )}
-                      <span className="font-semibold">
+                {seasons.map((season) => {
+                  // A podium championship finish tints both summary cells with
+                  // the same gold/silver/bronze used for race results.
+                  const podium = season.position <= 3;
+                  const bg = podium
+                    ? { backgroundColor: resultColor(season.position, false) }
+                    : undefined;
+                  const text = podium ? "text-neutral-900" : "";
+                  return (
+                    <tr key={season.championship.id} className="h-14">
+                      <td
+                        className={`border border-neutral-800 px-1.5 text-center font-semibold sm:px-3 ${text}`}
+                        style={bg}
+                      >
+                        {season.points}
+                      </td>
+                      <td
+                        className={`whitespace-nowrap border border-neutral-800 px-1.5 text-center font-semibold sm:px-3 ${text}`}
+                        style={bg}
+                      >
                         {ordinal(season.position)}
-                      </span>
-                      <span className="text-neutral-500">
-                        {" "}
-                        / {season.participants}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
