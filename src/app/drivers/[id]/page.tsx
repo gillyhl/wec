@@ -144,7 +144,7 @@ export default async function DriverPage({
                     {rounds.map((round) => (
                       <th
                         key={round}
-                        className="w-14 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-16 sm:px-1.5"
+                        className="w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-11 sm:px-1.5"
                       >
                         R{round}
                       </th>
@@ -186,10 +186,8 @@ export default async function DriverPage({
                                 cell ? "text-neutral-900" : "text-neutral-400"
                               }`}
                             >
-                              <span className="flex items-center gap-0.5 text-[10px]">
-                                <FlagIcon
-                                  countryCode={race.track.country_code}
-                                />
+                              <FlagIcon countryCode={race.track.country_code} />
+                              <span className="text-[10px]">
                                 {race.track.short_code}
                               </span>
                               <span className="font-bold">
