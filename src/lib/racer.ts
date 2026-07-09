@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { getChampionshipData } from "@/lib/championship";
+import { getChampionshipData, pointsForRank } from "@/lib/championship";
 import type { RaceCell, RaceWithTrack } from "@/lib/championship";
-import type { Championship, Racer } from "@/lib/types";
+import type { Championship, Racer, Track } from "@/lib/types";
 
 // A single race in a season, paired with the driver's result there.
 export interface SeasonRace {
@@ -23,9 +23,24 @@ export interface RacerSeason {
   retirements: number;
 }
 
+// A driver's aggregated record at a single track, across every season they
+// raced it. Mirrors the per-track stats on the Statistics page.
+export interface DriverTrackRow {
+  track: Track;
+  races: number;
+  // Best (lowest) finishing position; null if the driver only ever retired.
+  bestFinish: number | null;
+  wins: number;
+  podiums: number;
+  pointsFinishes: number;
+  retirements: number;
+  points: number;
+}
+
 export interface RacerHistory {
   racer: Racer;
   seasons: RacerSeason[];
+  trackStats: DriverTrackRow[];
 }
 
 // Builds a driver's full racing history, one entry per championship they took
@@ -56,6 +71,26 @@ export async function getRacerHistory(
 
   const seasons: RacerSeason[] = [];
 
+  // Per-track running totals, keyed by track id.
+  const trackRows = new Map<string, DriverTrackRow>();
+  const trackRow = (track: Track): DriverTrackRow => {
+    let r = trackRows.get(track.id);
+    if (!r) {
+      r = {
+        track,
+        races: 0,
+        bestFinish: null,
+        wins: 0,
+        podiums: 0,
+        pointsFinishes: 0,
+        retirements: 0,
+        points: 0,
+      };
+      trackRows.set(track.id, r);
+    }
+    return r;
+  };
+
   for (const data of all) {
     if (!data) continue;
 
@@ -85,9 +120,26 @@ export async function getRacerHistory(
     const races: SeasonRace[] = data.races.map((race) => {
       const cell = row.cells[race.id] ?? null;
       if (cell) {
+        const isWin = cell.rank === 1;
+        const isPodium = cell.rank !== null && cell.rank <= 3;
+        const pts = pointsForRank(cell.rank);
         if (cell.retired) retirements++;
-        if (cell.rank === 1) wins++;
-        if (cell.rank !== null && cell.rank <= 3) podiums++;
+        if (isWin) wins++;
+        if (isPodium) podiums++;
+
+        const tr = trackRow(race.track);
+        tr.races++;
+        tr.points += pts;
+        if (cell.retired) tr.retirements++;
+        if (isWin) tr.wins++;
+        if (isPodium) tr.podiums++;
+        if (pts > 0) tr.pointsFinishes++;
+        if (
+          cell.rank !== null &&
+          (tr.bestFinish === null || cell.rank < tr.bestFinish)
+        ) {
+          tr.bestFinish = cell.rank;
+        }
       }
       return { race, cell };
     });
@@ -104,7 +156,16 @@ export async function getRacerHistory(
     });
   }
 
-  return { racer, seasons };
+  // Order tracks by points scored, then wins, then name — matching the
+  // Statistics page's per-track ordering.
+  const trackStats = [...trackRows.values()].sort(
+    (a, b) =>
+      b.points - a.points ||
+      b.wins - a.wins ||
+      a.track.name.localeCompare(b.track.name),
+  );
+
+  return { racer, seasons, trackStats };
 }
 
 // Ordinal suffix for a finishing position (1 -> "1st", 2 -> "2nd", ...).

@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const headCell =
   "border border-neutral-800 px-1.5 py-2 text-center font-medium leading-tight sm:px-3";
+const numCell = "border border-neutral-800 px-1.5 text-center sm:px-3";
 
 // Career totals rolled up across every season the driver raced.
 function careerTotals(seasons: RacerSeason[]) {
@@ -36,7 +37,7 @@ export default async function DriverPage({
   const history = await getRacerHistory(id);
 
   if (!history) notFound();
-  const { racer, seasons } = history;
+  const { racer, seasons, trackStats } = history;
 
   const career = careerTotals(seasons);
 
@@ -243,6 +244,53 @@ export default async function DriverPage({
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Per-track record, aggregated across every season. */}
+          <h2 className="mt-10 text-lg font-semibold">Tracks</h2>
+          <div className="mt-4 w-fit max-w-full overflow-x-auto rounded-lg border border-neutral-800">
+            <table className="border-collapse text-sm">
+              <thead className="bg-neutral-900 text-neutral-400">
+                <tr>
+                  <th className="border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
+                    Track
+                  </th>
+                  <th className={headCell}>Races</th>
+                  <th className={headCell}>Best finish</th>
+                  <th className={headCell}>Wins</th>
+                  <th className={headCell}>Podiums</th>
+                  <th className={headCell}>Points finishes</th>
+                  <th className={headCell}>Retirements</th>
+                  <th className={headCell}>Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trackStats.map((row) => (
+                  <tr key={row.track.id} className="h-12">
+                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
+                      <FlagIcon
+                        countryCode={row.track.country_code}
+                        className="mr-1.5 sm:mr-2"
+                      />
+                      <span className="sm:hidden">{row.track.short_code}</span>
+                      <span className="hidden sm:inline">{row.track.name}</span>
+                      {/* Same circuit can exist in both games as distinct
+                          tracks; label the game so rows aren't ambiguous. */}
+                      <span className="block text-xs font-normal text-neutral-500">
+                        {RACING_SERIES_LABELS[row.track.source]}
+                      </span>
+                    </td>
+                    <td className={numCell}>{row.races}</td>
+                    <td className={numCell}>{row.bestFinish ?? "—"}</td>
+                    <td className={numCell}>{row.wins}</td>
+                    <td className={numCell}>{row.podiums}</td>
+                    <td className={numCell}>{row.pointsFinishes}</td>
+                    <td className={numCell}>{row.retirements}</td>
+                    <td className={`${numCell} font-semibold`}>{row.points}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

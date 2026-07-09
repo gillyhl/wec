@@ -128,6 +128,9 @@ export default async function StatsPage() {
                       />
                       <span className="sm:hidden">{row.track.short_code}</span>
                       <span className="hidden sm:inline">{row.track.name}</span>
+                      <span className="block text-xs font-normal text-neutral-500">
+                        {RACING_SERIES_LABELS[row.track.source]}
+                      </span>
                     </td>
                     <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
                       <RacerName racer={row.racer} />
