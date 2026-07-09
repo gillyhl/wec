@@ -47,6 +47,17 @@ export function pointsForRank(rank: number | null): number {
   return POINTS_BY_RANK[rank] ?? 0;
 }
 
+// Background colour for a race result cell, based on finishing position.
+// Shared by the championship standings matrix and the driver history page.
+export function resultColor(rank: number | null, retired: boolean): string {
+  if (retired) return "#EFCFFF";
+  if (rank === 1) return "#FFFFBF";
+  if (rank === 2) return "#DFDFDF";
+  if (rank === 3) return "#FFDF9F";
+  if (rank !== null && rank >= 4 && rank <= 10) return "#DFFFDF";
+  return "#CFCFFF";
+}
+
 // Builds a countback histogram: counts[i] is how many times the racer
 // finished in position i+1 (counts[0] = wins, counts[1] = 2nd places, ...).
 function rankCounts(cells: Record<string, RaceCell>): number[] {

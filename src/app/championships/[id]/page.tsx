@@ -4,6 +4,7 @@ import {
   championshipWinner,
   getChampionshipData,
   pointsForRank,
+  resultColor,
 } from "@/lib/championship";
 import type { RaceCell } from "@/lib/championship";
 import { getAuth } from "@/lib/auth";
@@ -43,16 +44,6 @@ function racerStats(cells: Record<string, RaceCell>) {
     if (pointsForRank(cell.rank) > 0) pointsFinishes++;
   }
   return { wins, podiums, pointsFinishes, retirements };
-}
-
-// Background colour for a race result cell, based on finishing position.
-function resultColor(rank: number | null, retired: boolean): string {
-  if (retired) return "#EFCFFF";
-  if (rank === 1) return "#FFFFBF";
-  if (rank === 2) return "#DFDFDF";
-  if (rank === 3) return "#FFDF9F";
-  if (rank !== null && rank >= 4 && rank <= 10) return "#DFFFDF";
-  return "#CFCFFF";
 }
 
 export default async function ChampionshipPage({
@@ -149,17 +140,22 @@ export default async function ChampionshipPage({
                     {row.position}
                   </td>
                   <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
-                    <FlagIcon
-                      countryCode={row.racer.country_code}
-                      className="mr-1.5 sm:mr-2"
-                    />
-                    {/* Abbreviate first name on mobile to save horizontal space */}
-                    <span className="sm:hidden">
-                      {row.racer.first_name.charAt(0)}. {row.racer.last_name}
-                    </span>
-                    <span className="hidden sm:inline">
-                      {row.racer.first_name} {row.racer.last_name}
-                    </span>
+                    <Link
+                      href={`/drivers/${row.racer.id}`}
+                      className="hover:underline"
+                    >
+                      <FlagIcon
+                        countryCode={row.racer.country_code}
+                        className="mr-1.5 sm:mr-2"
+                      />
+                      {/* Abbreviate first name on mobile to save horizontal space */}
+                      <span className="sm:hidden">
+                        {row.racer.first_name.charAt(0)}. {row.racer.last_name}
+                      </span>
+                      <span className="hidden sm:inline">
+                        {row.racer.first_name} {row.racer.last_name}
+                      </span>
+                    </Link>
                   </td>
                 </tr>
               ))}

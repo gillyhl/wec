@@ -7,10 +7,14 @@ import type { Racer } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 // Racer name + flag, abbreviating the first name on mobile to save space.
-// Mirrors the treatment used in the championship standings.
+// Mirrors the treatment used in the championship standings. Links through to
+// the driver's full racing history.
 function RacerName({ racer }: { racer: Racer }) {
   return (
-    <>
+    <Link
+      href={`/drivers/${racer.id}`}
+      className="hover:underline"
+    >
       <FlagIcon countryCode={racer.country_code} className="mr-1.5 sm:mr-2" />
       <span className="sm:hidden">
         {racer.first_name.charAt(0)}. {racer.last_name}
@@ -18,7 +22,7 @@ function RacerName({ racer }: { racer: Racer }) {
       <span className="hidden sm:inline">
         {racer.first_name} {racer.last_name}
       </span>
-    </>
+    </Link>
   );
 }
 

@@ -25,7 +25,7 @@ insert into wec.tracks (name, short_code, country_code, source) values
   ('Silverstone', 'SIL', 'GB', 'project_cars_2'),
   ('Laguna Seca', 'LAG', 'US', 'project_cars_2'),
   ('Suzuka Circuit', 'SUZ', 'JP', 'project_cars_2'),
-  ('Brands Hatch', 'BRA', 'GB', 'project_cars_2'),
+  ('Brands Hatch', 'BRH', 'GB', 'project_cars_2'),
   ('Donington Park', 'DON', 'GB', 'project_cars_2')
 on conflict (source, short_code) do update
   set name = excluded.name, country_code = excluded.country_code;
