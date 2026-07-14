@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   championshipSummary,
   championshipWinner,
+  clinchedChampion,
   getChampionshipData,
   pointsForRank,
   resultColor,
@@ -74,6 +75,11 @@ export default async function ChampionshipPage({
 
   const winner =
     championship.status === "finished" ? championshipWinner(standings) : null;
+
+  // While a season is still running, flag when the leader has an unassailable
+  // lead — no rival can catch them even winning every race left.
+  const clinched =
+    championship.status !== "finished" ? clinchedChampion(data) : null;
 
   const summary = championshipSummary(data);
   const summaryTiles: { label: string; value: string; sub?: string }[] = [];
@@ -149,6 +155,29 @@ export default async function ChampionshipPage({
         </div>
       )}
 
+      {clinched && (
+        <div className="mt-6 flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+          <span className="text-2xl" aria-hidden="true">
+            🏆
+          </span>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-400/80">
+              Title clinched
+            </p>
+            <p className="text-lg font-bold">
+              <FlagIcon
+                countryCode={clinched.racer.country_code}
+                className="mr-2"
+              />
+              {clinched.racer.first_name} {clinched.racer.last_name}
+              <span className="ml-2 text-sm font-normal text-neutral-400">
+                unassailable lead · {clinched.points} pts
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Standings matrix */}
       {standings.length === 0 ? (
         <div className="mt-6 rounded-lg border border-neutral-800 px-3 py-6 text-center text-sm text-neutral-500">
@@ -209,6 +238,7 @@ export default async function ChampionshipPage({
                       title={race.track.name}
                     >
                       <div className="flex flex-col items-center leading-tight">
+                        <span className="mb-1 text-neutral-500">R{race.round}</span>
                         <FlagIcon
                           countryCode={race.track.country_code}
                           className="text-base"

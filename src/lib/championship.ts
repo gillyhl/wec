@@ -212,6 +212,30 @@ export async function getChampionshipData(
 // been mathematically clinched (the maximum a rival can still make up).
 const MAX_POINTS_PER_RACE = POINTS_BY_RANK[1];
 
+// The racer who has already mathematically clinched the title: the points
+// leader whom no rival can catch even if that rival wins every remaining race
+// and the leader scores nothing more. Returns null while the title is still
+// open, or before anyone has scored. Every other racer counts as a rival —
+// including those yet to score, who could in principle win the races to come.
+export function clinchedChampion(data: ChampionshipData): StandingsRow | null {
+  const { races, standings } = data;
+  const leader = standings[0];
+  if (!leader || leader.points <= 0) return null;
+
+  // Races still to run: those without any recorded result.
+  const racesWithResults = new Set<string>();
+  for (const row of standings) {
+    for (const raceId of Object.keys(row.cells)) racesWithResults.add(raceId);
+  }
+  const remaining = races.filter((r) => !racesWithResults.has(r.id)).length;
+  const maxGain = MAX_POINTS_PER_RACE * remaining;
+
+  const unassailable = standings
+    .slice(1)
+    .every((s) => leader.points > s.points + maxGain);
+  return unassailable ? leader : null;
+}
+
 // Headline talking points for a single championship, derived from the same
 // standings/cumulative data the standings matrix is built from.
 export interface ChampionshipSummary {
