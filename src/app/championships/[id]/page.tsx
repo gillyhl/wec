@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  championshipSummary,
   championshipWinner,
   getChampionshipData,
   pointsForRank,
@@ -73,6 +74,40 @@ export default async function ChampionshipPage({
 
   const winner =
     championship.status === "finished" ? championshipWinner(standings) : null;
+
+  const summary = championshipSummary(data);
+  const summaryTiles: { label: string; value: string; sub?: string }[] = [];
+  if (summary.marginOfVictory !== null) {
+    summaryTiles.push({
+      label: "Margin of victory",
+      value: summary.decidedByCountback
+        ? "Countback"
+        : `${summary.marginOfVictory} pts`,
+      sub: summary.decidedByCountback ? "level on points" : undefined,
+    });
+  }
+  if (summary.titleDecidedRound !== null) {
+    summaryTiles.push({
+      label: "Title decided",
+      value:
+        summary.titleDecidedRound === summary.totalRounds
+          ? "Final round"
+          : `Round ${summary.titleDecidedRound}`,
+      sub: `of ${summary.totalRounds}`,
+    });
+  }
+  summaryTiles.push({
+    label: "Lead changes",
+    value: String(summary.leadChanges),
+  });
+  if (summary.biggestComeback) {
+    const { racer, deficit, round } = summary.biggestComeback;
+    summaryTiles.push({
+      label: "Biggest comeback",
+      value: `${deficit} pts`,
+      sub: `${racer.first_name.charAt(0)}. ${racer.last_name}, from R${round}`,
+    });
+  }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10">
@@ -270,6 +305,29 @@ export default async function ChampionshipPage({
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Season summary talking points */}
+      {standings.length > 0 && races.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-lg font-semibold">Season summary</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {summaryTiles.map((tile) => (
+              <div
+                key={tile.label}
+                className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3"
+              >
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  {tile.label}
+                </p>
+                <p className="mt-1 text-xl font-bold">{tile.value}</p>
+                {tile.sub && (
+                  <p className="text-xs text-neutral-400">{tile.sub}</p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

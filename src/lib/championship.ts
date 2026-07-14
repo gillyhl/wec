@@ -207,3 +207,117 @@ export async function getChampionshipData(
     standings,
   };
 }
+
+// Points on offer for a single race win — used to work out when a title has
+// been mathematically clinched (the maximum a rival can still make up).
+const MAX_POINTS_PER_RACE = POINTS_BY_RANK[1];
+
+// Headline talking points for a single championship, derived from the same
+// standings/cumulative data the standings matrix is built from.
+export interface ChampionshipSummary {
+  totalRounds: number;
+  // Points gap between champion and runner-up. null until the season is
+  // finished (or if there is no runner-up). 0 means it went to countback.
+  marginOfVictory: number | null;
+  decidedByCountback: boolean;
+  // How many times the outright points leader changed hands across the season.
+  leadChanges: number;
+  // The largest points deficit the (eventual) champion trailed the lead by
+  // before going on to top the table. null if they were never headed.
+  biggestComeback: { racer: Racer; deficit: number; round: number } | null;
+  // 1-indexed round the title was mathematically secured. Equal to
+  // totalRounds when it went to the final race. null while in progress.
+  titleDecidedRound: number | null;
+}
+
+export function championshipSummary(
+  data: ChampionshipData,
+): ChampionshipSummary {
+  const { championship, races, standings } = data;
+  const n = races.length;
+
+  const summary: ChampionshipSummary = {
+    totalRounds: n,
+    marginOfVictory: null,
+    decidedByCountback: false,
+    leadChanges: 0,
+    biggestComeback: null,
+    titleDecidedRound: null,
+  };
+
+  // Only racers who actually recorded a result count towards the narrative.
+  const participants = standings.filter(
+    (s) => Object.keys(s.cells).length > 0,
+  );
+  if (n === 0 || participants.length === 0) return summary;
+
+  const cumulativeAt = (row: StandingsRow, r: number) => row.cumulative[r] ?? 0;
+
+  // Lead changes: track who tops the cumulative table after each round. The
+  // incumbent keeps the lead whenever tied at the top, so ties don't flip it.
+  let leader: string | null = null;
+  for (let r = 0; r < n; r++) {
+    const max = Math.max(...participants.map((s) => cumulativeAt(s, r)));
+    if (max <= 0) continue; // nobody has scored yet
+    const incumbentTop: boolean =
+      leader !== null &&
+      cumulativeAt(participants.find((s) => s.racer.id === leader)!, r) === max;
+    const newLeader: string | null = incumbentTop
+      ? leader
+      : (participants.find((s) => cumulativeAt(s, r) === max)?.racer.id ??
+        leader);
+    if (leader !== null && newLeader !== leader) summary.leadChanges++;
+    leader = newLeader;
+  }
+
+  // Biggest comeback: the largest gap the eventual champion (or, mid-season,
+  // the current leader) had to claw back at any point.
+  const winner = championshipWinner(standings);
+  const comebackTarget = winner ?? standings[0];
+  if (comebackTarget) {
+    let deficit = 0;
+    let round = 0;
+    for (let r = 0; r < n; r++) {
+      const max = Math.max(...participants.map((s) => cumulativeAt(s, r)));
+      const gap = max - cumulativeAt(comebackTarget, r);
+      if (gap > deficit) {
+        deficit = gap;
+        round = r + 1;
+      }
+    }
+    if (deficit > 0) {
+      summary.biggestComeback = {
+        racer: comebackTarget.racer,
+        deficit,
+        round,
+      };
+    }
+  }
+
+  if (championship.status === "finished" && winner) {
+    const runnerUp = standings.find((s) => s.racer.id !== winner.racer.id);
+    if (runnerUp) {
+      summary.marginOfVictory = winner.points - runnerUp.points;
+      summary.decidedByCountback = summary.marginOfVictory === 0;
+    }
+
+    // Title clinched: earliest round after which no rival can catch the
+    // champion even if they win every remaining race and the champion scores
+    // nothing more. If that never holds, it went to the flag (countback).
+    const rivals = participants.filter((s) => s.racer.id !== winner.racer.id);
+    for (let r = 0; r < n; r++) {
+      const remaining = n - 1 - r;
+      const champ = cumulativeAt(winner, r);
+      const safe = rivals.every(
+        (s) => champ > cumulativeAt(s, r) + MAX_POINTS_PER_RACE * remaining,
+      );
+      if (safe) {
+        summary.titleDecidedRound = r + 1;
+        break;
+      }
+    }
+    if (summary.titleDecidedRound === null) summary.titleDecidedRound = n;
+  }
+
+  return summary;
+}

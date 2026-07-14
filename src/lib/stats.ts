@@ -41,6 +41,21 @@ export interface SeriesTrackStats {
 export interface StatsData {
   racerTotals: RacerTotals[];
   series: SeriesTrackStats[];
+  // For each track, the racer with the strongest record there.
+  trackSpecialists: TrackRacerRow[];
+  // For each racer, the track where they have their strongest record. Ordered
+  // to match `racerTotals`.
+  bestTrackByRacer: TrackRacerRow[];
+}
+
+// Picks the stronger of two track records: more points, then more wins, then
+// the better (lower) best finish.
+function strongerTrackRow(a: TrackRacerRow, b: TrackRacerRow): TrackRacerRow {
+  if (a.points !== b.points) return a.points > b.points ? a : b;
+  if (a.wins !== b.wins) return a.wins > b.wins ? a : b;
+  const af = a.bestFinish ?? Infinity;
+  const bf = b.bestFinish ?? Infinity;
+  return af <= bf ? a : b;
 }
 
 // Sort racers by points, then wins, then name — used for both overall totals
@@ -186,5 +201,32 @@ export async function getStatsData(): Promise<StatsData> {
         SERIES_ORDER.indexOf(a.series) - SERIES_ORDER.indexOf(b.series),
     );
 
-  return { racerTotals: racerTotalsArr, series };
+  // Best record per track, and each racer's best track, from the same rows.
+  const specialistByTrack = new Map<string, TrackRacerRow>();
+  const bestByRacer = new Map<string, TrackRacerRow>();
+  for (const row of trackRows.values()) {
+    const t = specialistByTrack.get(row.track.id);
+    specialistByTrack.set(row.track.id, t ? strongerTrackRow(t, row) : row);
+    const r = bestByRacer.get(row.racer.id);
+    bestByRacer.set(row.racer.id, r ? strongerTrackRow(r, row) : row);
+  }
+
+  const trackSpecialists = [...specialistByTrack.values()].sort(
+    (a, b) =>
+      SERIES_ORDER.indexOf(a.track.source) -
+        SERIES_ORDER.indexOf(b.track.source) ||
+      a.track.name.localeCompare(b.track.name),
+  );
+
+  // Follow the Drivers-table ordering so the two line up.
+  const bestTrackByRacer = racerTotalsArr
+    .map((t) => bestByRacer.get(t.racer.id))
+    .filter((r): r is TrackRacerRow => r !== undefined);
+
+  return {
+    racerTotals: racerTotalsArr,
+    series,
+    trackSpecialists,
+    bestTrackByRacer,
+  };
 }

@@ -37,7 +37,14 @@ export default async function DriverPage({
   const history = await getRacerHistory(id);
 
   if (!history) notFound();
-  const { racer, seasons, trackStats } = history;
+  const { racer, seasons, trackStats, streaks, headToHead } = history;
+
+  const streakTiles = [
+    { label: "Win streak", value: streaks.wins },
+    { label: "Podium streak", value: streaks.podiums },
+    { label: "Points streak", value: streaks.points },
+    { label: "Finish streak", value: streaks.finishes },
+  ];
 
   const career = careerTotals(seasons);
 
@@ -294,6 +301,93 @@ export default async function DriverPage({
               </tbody>
             </table>
           </div>
+
+          {/* Longest career streaks, over the races the driver entered. */}
+          <h2 className="mt-10 text-lg font-semibold">Longest streaks</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {streakTiles.map((tile) => (
+              <div
+                key={tile.label}
+                className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3"
+              >
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  {tile.label}
+                </p>
+                <p className="mt-1 text-xl font-bold">
+                  {tile.value}
+                  <span className="ml-1 text-sm font-normal text-neutral-400">
+                    {tile.value === 1 ? "race" : "races"}
+                  </span>
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Head-to-head: how the driver fared against each rival when both
+              entered the same race. */}
+          {headToHead.length > 0 && (
+            <>
+              <h2 className="mt-10 text-lg font-semibold">Head to head</h2>
+              <p className="mt-1 text-sm text-neutral-400">
+                Races finished ahead of each rival when both took part.
+              </p>
+              <div className="mt-4 w-fit max-w-full overflow-x-auto rounded-lg border border-neutral-800">
+                <table className="border-collapse text-sm">
+                  <thead className="bg-neutral-900 text-neutral-400">
+                    <tr>
+                      <th className="border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
+                        Rival
+                      </th>
+                      <th className={headCell}>Ahead</th>
+                      <th className={headCell}>Behind</th>
+                      <th className={headCell}>Record</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {headToHead.map((h) => {
+                      const winning = h.ahead > h.behind;
+                      const losing = h.ahead < h.behind;
+                      return (
+                        <tr key={h.opponent.id} className="h-12">
+                          <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
+                            <Link
+                              href={`/drivers/${h.opponent.id}`}
+                              className="hover:underline"
+                            >
+                              <FlagIcon
+                                countryCode={h.opponent.country_code}
+                                className="mr-1.5 sm:mr-2"
+                              />
+                              <span className="sm:hidden">
+                                {h.opponent.first_name.charAt(0)}.{" "}
+                                {h.opponent.last_name}
+                              </span>
+                              <span className="hidden sm:inline">
+                                {h.opponent.first_name} {h.opponent.last_name}
+                              </span>
+                            </Link>
+                          </td>
+                          <td className={numCell}>{h.ahead}</td>
+                          <td className={numCell}>{h.behind}</td>
+                          <td
+                            className={`${numCell} font-semibold ${
+                              winning
+                                ? "text-green-400"
+                                : losing
+                                  ? "text-red-400"
+                                  : ""
+                            }`}
+                          >
+                            {h.ahead}–{h.behind}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </>
       )}
     </main>

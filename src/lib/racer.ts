@@ -37,10 +37,59 @@ export interface DriverTrackRow {
   points: number;
 }
 
+// A driver's longest career runs of a given kind of result, counted over the
+// races they entered in chronological order.
+export interface DriverStreaks {
+  wins: number;
+  podiums: number;
+  points: number;
+  // Consecutive races finished (i.e. not retired).
+  finishes: number;
+}
+
+// A driver's record against one particular rival, over every race both
+// entered. `ahead` + `behind` = comparable races (dead heats/mutual DNFs are
+// not counted either way).
+export interface HeadToHeadRow {
+  opponent: Racer;
+  ahead: number;
+  behind: number;
+}
+
 export interface RacerHistory {
   racer: Racer;
   seasons: RacerSeason[];
   trackStats: DriverTrackRow[];
+  streaks: DriverStreaks;
+  headToHead: HeadToHeadRow[];
+}
+
+// Longest run of each kind of result across the driver's career, walking the
+// races they entered in order.
+function longestStreaks(cells: RaceCell[]): DriverStreaks {
+  const best = { wins: 0, podiums: 0, points: 0, finishes: 0 };
+  const run = { wins: 0, podiums: 0, points: 0, finishes: 0 };
+  for (const cell of cells) {
+    run.wins = cell.rank === 1 ? run.wins + 1 : 0;
+    run.podiums = cell.rank !== null && cell.rank <= 3 ? run.podiums + 1 : 0;
+    run.points = pointsForRank(cell.rank) > 0 ? run.points + 1 : 0;
+    run.finishes = cell.retired ? 0 : run.finishes + 1;
+    best.wins = Math.max(best.wins, run.wins);
+    best.podiums = Math.max(best.podiums, run.podiums);
+    best.points = Math.max(best.points, run.points);
+    best.finishes = Math.max(best.finishes, run.finishes);
+  }
+  return best;
+}
+
+// Compares two results in the same race: positive if `a` finished ahead of
+// `b`, negative if behind, 0 if not comparable (both retired, or a dead heat).
+function compareResults(a: RaceCell, b: RaceCell): number {
+  if (a.retired && b.retired) return 0;
+  if (a.retired) return -1;
+  if (b.retired) return 1;
+  if (a.rank === null || b.rank === null) return 0;
+  return b.rank - a.rank; // lower rank finishes ahead
 }
 
 // Builds a driver's full racing history, one entry per championship they took
@@ -70,6 +119,20 @@ export async function getRacerHistory(
   );
 
   const seasons: RacerSeason[] = [];
+
+  // The driver's own results in chronological order, for streak counting.
+  const careerCells: RaceCell[] = [];
+
+  // Head-to-head tallies against every rival, keyed by opponent racer id.
+  const h2hRows = new Map<string, HeadToHeadRow>();
+  const h2hRow = (opponent: Racer): HeadToHeadRow => {
+    let r = h2hRows.get(opponent.id);
+    if (!r) {
+      r = { opponent, ahead: 0, behind: 0 };
+      h2hRows.set(opponent.id, r);
+    }
+    return r;
+  };
 
   // Per-track running totals, keyed by track id.
   const trackRows = new Map<string, DriverTrackRow>();
@@ -127,6 +190,20 @@ export async function getRacerHistory(
         if (isWin) wins++;
         if (isPodium) podiums++;
 
+        careerCells.push(cell);
+
+        // Compare against every other racer who entered this same race.
+        for (const opp of participants) {
+          if (opp.racer.id === racerId) continue;
+          const oppCell = opp.cells[race.id];
+          if (!oppCell) continue;
+          const cmp = compareResults(cell, oppCell);
+          if (cmp === 0) continue;
+          const h = h2hRow(opp.racer);
+          if (cmp > 0) h.ahead++;
+          else h.behind++;
+        }
+
         const tr = trackRow(race.track);
         tr.races++;
         tr.points += pts;
@@ -165,7 +242,21 @@ export async function getRacerHistory(
       a.track.name.localeCompare(b.track.name),
   );
 
-  return { racer, seasons, trackStats };
+  // Most-contested rivalries first, then by how favourable the record is.
+  const headToHead = [...h2hRows.values()].sort(
+    (a, b) =>
+      b.ahead + b.behind - (a.ahead + a.behind) ||
+      b.ahead - b.behind - (a.ahead - a.behind) ||
+      a.opponent.last_name.localeCompare(b.opponent.last_name),
+  );
+
+  return {
+    racer,
+    seasons,
+    trackStats,
+    streaks: longestStreaks(careerCells),
+    headToHead,
+  };
 }
 
 // Ordinal suffix for a finishing position (1 -> "1st", 2 -> "2nd", ...).
