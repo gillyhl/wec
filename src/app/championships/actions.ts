@@ -247,6 +247,30 @@ export async function completeChampionship(formData: FormData) {
   redirect(`/championships/${championshipId}`);
 }
 
+// Renames a championship. The new name must be non-empty; trailing/leading
+// whitespace is trimmed.
+export async function renameChampionship(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const championshipId = String(formData.get("championship_id") ?? "");
+  if (!championshipId) throw new Error("Missing championship reference");
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Championship name is required");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("championships")
+    .update({ name })
+    .eq("id", championshipId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  revalidatePath(`/championships/${championshipId}`);
+  redirect(`/championships/${championshipId}`);
+}
+
 // Permanently deletes a championship. Its races, results and points rows are
 // removed automatically by the ON DELETE CASCADE foreign keys.
 export async function deleteChampionship(formData: FormData) {

@@ -3,6 +3,7 @@
 import {
   completeChampionship,
   deleteChampionship,
+  renameChampionship,
 } from "@/app/championships/actions";
 
 // Admin-only controls on the championship page: mark a championship complete
@@ -23,6 +24,33 @@ export default function ChampionshipAdminControls({
   return (
     <div className="mt-10 border-t border-neutral-800 pt-6">
       <h2 className="text-lg font-semibold">Admin</h2>
+
+      <form action={renameChampionship} className="mt-4 max-w-sm">
+        <label
+          htmlFor="championship-name"
+          className="block text-sm font-medium text-neutral-400"
+        >
+          Championship name
+        </label>
+        <input type="hidden" name="championship_id" value={championshipId} />
+        <div className="mt-2 flex gap-2">
+          <input
+            id="championship-name"
+            name="name"
+            type="text"
+            required
+            defaultValue={championshipName}
+            className="flex-1 rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white focus:border-neutral-600 focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-white px-3 py-2 font-medium text-black hover:bg-neutral-200"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+
       <div className="mt-4 flex flex-col gap-4 sm:flex-row">
         {status === "current" && (
           <form action={completeChampionship}>
