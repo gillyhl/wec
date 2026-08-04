@@ -187,11 +187,13 @@ export async function getStatsData(): Promise<StatsData> {
   const series: SeriesTrackStats[] = [...seriesMap.entries()]
     .map(([s, rows]) => ({
       series: s,
-      // Order by points scored; fall back to wins, then track, then name.
+      // Order by points scored; fall back to wins, then best (lowest) finish,
+      // then track, then name.
       rows: rows.sort(
         (a, b) =>
           b.points - a.points ||
           b.wins - a.wins ||
+          (a.bestFinish ?? Infinity) - (b.bestFinish ?? Infinity) ||
           a.track.name.localeCompare(b.track.name) ||
           a.racer.last_name.localeCompare(b.racer.last_name),
       ),
