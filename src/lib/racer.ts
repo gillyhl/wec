@@ -233,12 +233,13 @@ export async function getRacerHistory(
     });
   }
 
-  // Order tracks by points scored, then wins, then name — matching the
-  // Statistics page's per-track ordering.
+  // Order tracks by points scored, then wins, then best (lowest) finish,
+  // then name — matching the Statistics page's per-track ordering.
   const trackStats = [...trackRows.values()].sort(
     (a, b) =>
       b.points - a.points ||
       b.wins - a.wins ||
+      (a.bestFinish ?? Infinity) - (b.bestFinish ?? Infinity) ||
       a.track.name.localeCompare(b.track.name),
   );
 
