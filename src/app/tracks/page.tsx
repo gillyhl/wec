@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import { RACING_SERIES_LABELS, type RacingSeries, type Track } from "@/lib/types";
 
@@ -10,11 +11,14 @@ const SERIES_ORDER: RacingSeries[] = ["project_cars_2", "iracing"];
 
 export default async function TracksPage() {
   const supabase = await createClient();
-  const { data: tracks, error } = await supabase
-    .from("tracks")
-    .select("id, name, short_code, country_code, source")
-    .order("name")
-    .returns<Track[]>();
+  const [{ data: tracks, error }, { isAdmin }] = await Promise.all([
+    supabase
+      .from("tracks")
+      .select("id, name, short_code, country_code, source")
+      .order("name")
+      .returns<Track[]>(),
+    getAuth(),
+  ]);
 
   const bySeries = new Map<RacingSeries, Track[]>();
   for (const track of tracks ?? []) {
@@ -29,12 +33,24 @@ export default async function TracksPage() {
         ← All championships
       </Link>
 
-      <h1 className="mt-4 text-2xl font-bold">Tracks</h1>
-      <p className="mt-1 text-sm text-neutral-400">
-        Every track available for a championship, grouped by the racing game
-        used. A championship&apos;s race order is always drawn from its own
-        game&apos;s pool.
-      </p>
+      <div className="mt-4 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Tracks</h1>
+          <p className="mt-1 text-sm text-neutral-400">
+            Every track available for a championship, grouped by the racing
+            game used. A championship&apos;s race order is always drawn from
+            its own game&apos;s pool.
+          </p>
+        </div>
+        {isAdmin && (
+          <Link
+            href="/tracks/new"
+            className="shrink-0 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-neutral-200"
+          >
+            Add track
+          </Link>
+        )}
+      </div>
 
       {error && (
         <p className="mt-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
