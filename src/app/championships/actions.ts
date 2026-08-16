@@ -6,16 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/lib/auth";
 import type { RacingSeries, Track } from "@/lib/types";
 
-// Project Cars 2 championships must always begin their race order with this track.
-const FIRST_TRACK_CODE = "IMO";
-
-// iRacing championships run a schedule of a user-chosen length chosen from the
-// track pool, with no track repeated. Up to IRACING_COUNTRY_CAP_THRESHOLD races
-// at most IRACING_MAX_PER_COUNTRY tracks may come from the same country; longer
+// Every series (Project Cars 2 and iRacing alike) builds its race order the
+// same way: a user-chosen number of races drawn from whichever tracks the
+// admin selected for the championship. Up to COUNTRY_CAP_THRESHOLD races, at
+// most MAX_PER_COUNTRY tracks may come from the same country; longer
 // schedules drop that limit (there aren't enough countries to honour it).
-const IRACING_DEFAULT_RACES = 12;
-const IRACING_MAX_PER_COUNTRY = 3;
-const IRACING_COUNTRY_CAP_THRESHOLD = 20;
+const DEFAULT_RACE_COUNT = 12;
+const MAX_PER_COUNTRY = 3;
+const COUNTRY_CAP_THRESHOLD = 20;
 
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -26,29 +24,11 @@ function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-// Project Cars 2 race order: IMO first, then every other track in random order.
-function projectCars2Schedule(tracks: Track[]): Track[] {
-  const firstTrack = tracks.find((t) => t.short_code === FIRST_TRACK_CODE);
-  if (!firstTrack) {
-    throw new Error(`The ${FIRST_TRACK_CODE} track is required but was not found.`);
-  }
-  const rest = shuffle(tracks.filter((t) => t.id !== firstTrack.id));
-  return [firstTrack, ...rest];
-}
-
-// iRacing race order: a random subset of `raceCount` tracks from the pool with
-// no repeated track. Schedules of IRACING_COUNTRY_CAP_THRESHOLD or fewer races
-// allow at most IRACING_MAX_PER_COUNTRY tracks from the same country; longer
-// ones lift that cap.
-function iracingSchedule(tracks: Track[], raceCount: number): Track[] {
-  if (raceCount > tracks.length) {
-    throw new Error(
-      `Only ${tracks.length} iRacing tracks are available, so a ${raceCount}-race ` +
-        `schedule with no repeated tracks is not possible.`,
-    );
-  }
-
-  const capPerCountry = raceCount <= IRACING_COUNTRY_CAP_THRESHOLD;
+// A random order of `raceCount` distinct tracks from the pool. Schedules of
+// COUNTRY_CAP_THRESHOLD or fewer races allow at most MAX_PER_COUNTRY tracks
+// from the same country; longer ones lift that cap.
+function distinctSchedule(tracks: Track[], raceCount: number): Track[] {
+  const capPerCountry = raceCount <= COUNTRY_CAP_THRESHOLD;
   const selected: Track[] = [];
   const perCountry: Record<string, number> = {};
 
@@ -56,7 +36,7 @@ function iracingSchedule(tracks: Track[], raceCount: number): Track[] {
     if (selected.length >= raceCount) break;
     if (capPerCountry) {
       const count = perCountry[track.country_code] ?? 0;
-      if (count >= IRACING_MAX_PER_COUNTRY) continue;
+      if (count >= MAX_PER_COUNTRY) continue;
       perCountry[track.country_code] = count + 1;
     }
     selected.push(track);
@@ -65,12 +45,37 @@ function iracingSchedule(tracks: Track[], raceCount: number): Track[] {
   if (selected.length < raceCount) {
     throw new Error(
       `Could not build a ${raceCount}-race schedule with at most ` +
-        `${IRACING_MAX_PER_COUNTRY} tracks per country.`,
+        `${MAX_PER_COUNTRY} tracks per country from the selected tracks.`,
     );
   }
 
   // The pool was already shuffled, so selection order is itself random.
   return selected;
+}
+
+// Builds the championship's race order from the tracks the admin selected.
+// When there are at least as many selected tracks as races, every race gets
+// a distinct track (see distinctSchedule). When there are fewer selected
+// tracks than races, the selected tracks are repeated enough times to cover
+// every race (e.g. 3 tracks for 7 races become a 9-track pool), then shuffled
+// and trimmed to raceCount — so a track can appear more than once, but only
+// as evenly as random draw allows.
+function buildSchedule(tracks: Track[], raceCount: number): Track[] {
+  if (tracks.length === 0) {
+    throw new Error("At least one track must be selected.");
+  }
+  if (!Number.isInteger(raceCount) || raceCount < 1) {
+    throw new Error("Number of races must be a positive whole number.");
+  }
+
+  if (raceCount <= tracks.length) {
+    return distinctSchedule(tracks, raceCount);
+  }
+
+  const repeatFactor = Math.ceil(raceCount / tracks.length);
+  const pool: Track[] = [];
+  for (let i = 0; i < repeatFactor; i++) pool.push(...tracks);
+  return shuffle(pool).slice(0, raceCount);
 }
 
 // Creates a new championship and its race schedule for the chosen series.
@@ -99,17 +104,15 @@ export async function createChampionship(formData: FormData) {
     throw new Error("No tracks have been seeded for this series yet.");
   }
 
-  let orderedTracks: Track[];
-  if (series === "iracing") {
-    const raw = String(formData.get("race_count") ?? "").trim();
-    const raceCount = raw === "" ? IRACING_DEFAULT_RACES : Number.parseInt(raw, 10);
-    if (!Number.isInteger(raceCount) || raceCount < 1) {
-      throw new Error("Number of races must be a positive whole number.");
-    }
-    orderedTracks = iracingSchedule(tracks, raceCount);
-  } else {
-    orderedTracks = projectCars2Schedule(tracks);
+  const selectedTrackIds = new Set(formData.getAll("track_ids").map(String));
+  const selectedTracks = tracks.filter((t) => selectedTrackIds.has(t.id));
+  if (selectedTracks.length === 0) {
+    throw new Error("At least one track must be selected for the championship.");
   }
+
+  const raw = String(formData.get("race_count") ?? "").trim();
+  const raceCount = raw === "" ? DEFAULT_RACE_COUNT : Number.parseInt(raw, 10);
+  const orderedTracks = buildSchedule(selectedTracks, raceCount);
 
   const { data: championship, error: champError } = await supabase
     .from("championships")
