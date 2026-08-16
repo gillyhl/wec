@@ -91,8 +91,18 @@ export default async function TracksPage() {
                           {track.name}
                         </span>
                       </span>
-                      <span className="shrink-0 rounded bg-neutral-800 px-1.5 py-0.5 text-xs font-medium text-neutral-400">
-                        {track.short_code}
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs font-medium text-neutral-400">
+                          {track.short_code}
+                        </span>
+                        {isAdmin && (
+                          <Link
+                            href={`/tracks/${track.id}/edit`}
+                            className="text-xs text-neutral-400 hover:text-white"
+                          >
+                            Edit
+                          </Link>
+                        )}
                       </span>
                     </div>
                   ))}
