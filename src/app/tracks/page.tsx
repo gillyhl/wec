@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import { RACING_SERIES_LABELS, type RacingSeries, type Track } from "@/lib/types";
+import { archiveTrack, unarchiveTrack } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function TracksPage() {
   const [{ data: tracks, error }, { isAdmin }] = await Promise.all([
     supabase
       .from("tracks")
-      .select("id, name, short_code, country_code, source")
+      .select("id, name, short_code, country_code, source, archived")
       .order("name")
       .returns<Track[]>(),
     getAuth(),
@@ -37,9 +38,10 @@ export default async function TracksPage() {
         <div>
           <h1 className="text-2xl font-bold">Tracks</h1>
           <p className="mt-1 text-sm text-neutral-400">
-            Every track available for a championship, grouped by the racing
-            game used. A championship&apos;s race order is always drawn from
-            its own game&apos;s pool.
+            Every track, grouped by the racing game used. A championship&apos;s
+            race order is always drawn from its own game&apos;s pool of
+            non-archived tracks — archiving a track keeps its past results
+            intact but stops it being picked for new championships.
           </p>
         </div>
         {isAdmin && (
@@ -61,14 +63,14 @@ export default async function TracksPage() {
       {!error &&
         SERIES_ORDER.map((series) => {
           const seriesTracks = bySeries.get(series) ?? [];
+          const activeCount = seriesTracks.filter((t) => !t.archived).length;
           return (
             <section key={series} className="mt-10">
               <h2 className="text-lg font-semibold">
                 {RACING_SERIES_LABELS[series]}
               </h2>
               <p className="mt-1 text-sm text-neutral-400">
-                {seriesTracks.length} track
-                {seriesTracks.length === 1 ? "" : "s"} available.
+                {activeCount} track{activeCount === 1 ? "" : "s"} available.
               </p>
 
               {seriesTracks.length === 0 ? (
@@ -80,7 +82,9 @@ export default async function TracksPage() {
                   {seriesTracks.map((track) => (
                     <div
                       key={track.id}
-                      className="flex items-center justify-between gap-3 rounded-md border border-neutral-800 bg-neutral-900/40 px-3 py-2"
+                      className={`flex items-center justify-between gap-3 rounded-md border border-neutral-800 bg-neutral-900/40 px-3 py-2 ${
+                        track.archived ? "opacity-50" : ""
+                      }`}
                     >
                       <span className="flex items-center gap-2 truncate">
                         <FlagIcon
@@ -90,18 +94,42 @@ export default async function TracksPage() {
                         <span className="truncate font-medium">
                           {track.name}
                         </span>
+                        {track.archived && (
+                          <span className="shrink-0 rounded bg-neutral-800 px-1.5 py-0.5 text-xs font-medium text-neutral-400">
+                            Archived
+                          </span>
+                        )}
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
                         <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs font-medium text-neutral-400">
                           {track.short_code}
                         </span>
                         {isAdmin && (
-                          <Link
-                            href={`/tracks/${track.id}/edit`}
-                            className="text-xs text-neutral-400 hover:text-white"
-                          >
-                            Edit
-                          </Link>
+                          <>
+                            <Link
+                              href={`/tracks/${track.id}/edit`}
+                              className="text-xs text-neutral-400 hover:text-white"
+                            >
+                              Edit
+                            </Link>
+                            <form
+                              action={
+                                track.archived ? unarchiveTrack : archiveTrack
+                              }
+                            >
+                              <input
+                                type="hidden"
+                                name="track_id"
+                                value={track.id}
+                              />
+                              <button
+                                type="submit"
+                                className="text-xs text-neutral-400 hover:text-white"
+                              >
+                                {track.archived ? "Unarchive" : "Archive"}
+                              </button>
+                            </form>
+                          </>
                         )}
                       </span>
                     </div>

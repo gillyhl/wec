@@ -14,7 +14,8 @@ export default async function NewChampionshipPage() {
   const supabase = await createClient();
   const { data: tracks, error } = await supabase
     .from("tracks")
-    .select("id, name, short_code, country_code, source")
+    .select("id, name, short_code, country_code, source, archived")
+    .eq("archived", false)
     .order("name")
     .returns<Track[]>();
 

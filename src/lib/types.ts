@@ -14,6 +14,7 @@ export interface Track {
   short_code: string;
   country_code: string;
   source: RacingSeries;
+  archived: boolean;
 }
 
 export interface Racer {
