@@ -95,13 +95,14 @@ export async function createChampionship(formData: FormData) {
 
   const { data: tracks, error: tracksError } = await supabase
     .from("tracks")
-    .select("id, name, short_code, country_code, source")
+    .select("id, name, short_code, country_code, source, archived")
     .eq("source", series)
+    .eq("archived", false)
     .returns<Track[]>();
 
   if (tracksError) throw new Error(tracksError.message);
   if (!tracks || tracks.length === 0) {
-    throw new Error("No tracks have been seeded for this series yet.");
+    throw new Error("No non-archived tracks are available for this series.");
   }
 
   const selectedTrackIds = new Set(formData.getAll("track_ids").map(String));

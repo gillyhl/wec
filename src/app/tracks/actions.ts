@@ -100,3 +100,41 @@ export async function updateTrack(formData: FormData) {
   revalidatePath("/tracks");
   redirect("/tracks");
 }
+
+// Archives a track so it no longer appears as an option when building a new
+// championship's schedule. Existing races and results that reference it are
+// untouched.
+export async function archiveTrack(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const trackId = String(formData.get("track_id") ?? "");
+  if (!trackId) throw new Error("Missing track reference");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tracks")
+    .update({ archived: true })
+    .eq("id", trackId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/tracks");
+}
+
+// Restores a previously archived track, making it selectable again.
+export async function unarchiveTrack(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const trackId = String(formData.get("track_id") ?? "");
+  if (!trackId) throw new Error("Missing track reference");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tracks")
+    .update({ archived: false })
+    .eq("id", trackId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/tracks");
+}
