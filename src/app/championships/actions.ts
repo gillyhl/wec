@@ -203,6 +203,36 @@ export async function saveRaceResults(formData: FormData) {
   redirect(`/championships/${championshipId}`);
 }
 
+// Records the AI difficulty (0-100) a race was raced against, or clears it
+// when left blank.
+export async function saveRaceDifficulty(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const raceId = String(formData.get("race_id") ?? "");
+  const championshipId = String(formData.get("championship_id") ?? "");
+  if (!raceId || !championshipId) throw new Error("Missing race reference");
+
+  const raw = String(formData.get("ai_difficulty") ?? "").trim();
+  let aiDifficulty: number | null = null;
+  if (raw !== "") {
+    aiDifficulty = Number.parseInt(raw, 10);
+    if (Number.isNaN(aiDifficulty) || aiDifficulty < 0 || aiDifficulty > 100) {
+      throw new Error("AI difficulty must be a number between 0 and 100.");
+    }
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("races")
+    .update({ ai_difficulty: aiDifficulty })
+    .eq("id", raceId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/championships/${championshipId}`);
+  redirect(`/championships/${championshipId}/races/${raceId}`);
+}
+
 // Marks a championship as finished. Only permitted once every race has at least
 // one result recorded, since the final standings must be settled before a
 // champion can be declared.
