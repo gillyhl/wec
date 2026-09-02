@@ -203,8 +203,8 @@ export async function saveRaceResults(formData: FormData) {
   redirect(`/championships/${championshipId}`);
 }
 
-// Records the AI difficulty (0-100) a race was raced against, or clears it
-// when left blank.
+// Records the AI difficulty a race was raced against, or clears it when left
+// blank. No upper bound — AI strength scales vary by game.
 export async function saveRaceDifficulty(formData: FormData) {
   const { isAdmin } = await getAuth();
   if (!isAdmin) throw new Error("Not authorized");
@@ -217,8 +217,8 @@ export async function saveRaceDifficulty(formData: FormData) {
   let aiDifficulty: number | null = null;
   if (raw !== "") {
     aiDifficulty = Number.parseInt(raw, 10);
-    if (Number.isNaN(aiDifficulty) || aiDifficulty < 0 || aiDifficulty > 100) {
-      throw new Error("AI difficulty must be a number between 0 and 100.");
+    if (Number.isNaN(aiDifficulty) || aiDifficulty < 0) {
+      throw new Error("AI difficulty must be a non-negative number.");
     }
   }
 

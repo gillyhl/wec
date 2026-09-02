@@ -93,7 +93,6 @@ export default async function RaceResultsPage({
             name="ai_difficulty"
             type="number"
             min={0}
-            max={100}
             defaultValue={race.ai_difficulty ?? ""}
             placeholder="–"
             className="mt-2 w-24 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-white outline-none focus:border-neutral-400"

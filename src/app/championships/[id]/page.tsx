@@ -225,10 +225,10 @@ export default async function ChampionshipPage({
               ))}
             </tbody>
             <tfoot>
-              <tr className="h-10">
+              <tr className="h-8">
                 <td
                   colSpan={2}
-                  className="border border-neutral-800 px-1.5 text-xs font-medium text-neutral-500 sm:px-3"
+                  className="border border-neutral-800 px-1.5 text-[10px] font-medium text-neutral-500 sm:px-3"
                 >
                   AI difficulty
                 </td>
@@ -316,11 +316,11 @@ export default async function ChampionshipPage({
                 ))}
               </tbody>
               <tfoot>
-                <tr className="h-10">
+                <tr className="h-8">
                   {races.map((race) => (
                     <td
                       key={race.id}
-                      className="border border-neutral-800 px-1 text-center text-xs text-neutral-400 sm:px-1.5"
+                      className="border border-neutral-800 px-1 text-center text-[10px] text-neutral-400 sm:px-1.5"
                     >
                       {race.ai_difficulty ?? "–"}
                     </td>
@@ -357,7 +357,7 @@ export default async function ChampionshipPage({
               })}
             </tbody>
             <tfoot>
-              <tr className="h-10">
+              <tr className="h-8">
                 <td className="border border-neutral-800 px-1.5 sm:px-3" />
               </tr>
             </tfoot>
