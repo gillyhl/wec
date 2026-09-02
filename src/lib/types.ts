@@ -37,6 +37,8 @@ export interface Race {
   championship_id: string;
   track_id: string;
   round: number;
+  // AI strength (0-100) raced against, when recorded.
+  ai_difficulty: number | null;
 }
 
 export interface RaceResult {

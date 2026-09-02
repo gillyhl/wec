@@ -117,7 +117,9 @@ export async function getChampionshipData(
 
   const { data: races } = await supabase
     .from("races")
-    .select("id, championship_id, track_id, round, track:tracks(*)")
+    .select(
+      "id, championship_id, track_id, round, ai_difficulty, track:tracks(*)",
+    )
     .eq("championship_id", championshipId)
     .order("round", { ascending: true })
     .returns<RaceWithTrack[]>();

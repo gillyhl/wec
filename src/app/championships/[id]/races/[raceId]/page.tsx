@@ -4,7 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import DeleteRaceButton from "@/components/DeleteRaceButton";
-import { clearRaceResults, saveRaceResults } from "../../../actions";
+import {
+  clearRaceResults,
+  saveRaceDifficulty,
+  saveRaceResults,
+} from "../../../actions";
 import type { Racer, RaceResult, Track } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +17,7 @@ interface RaceRow {
   id: string;
   round: number;
   championship_id: string;
+  ai_difficulty: number | null;
   track: Track;
 }
 
@@ -29,7 +34,7 @@ export default async function RaceResultsPage({
 
   const { data: race } = await supabase
     .from("races")
-    .select("id, round, championship_id, track:tracks(*)")
+    .select("id, round, championship_id, ai_difficulty, track:tracks(*)")
     .eq("id", raceId)
     .eq("championship_id", id)
     .maybeSingle<RaceRow>();
@@ -69,6 +74,38 @@ export default async function RaceResultsPage({
         Round {race.round} · {race.track.short_code} · Enter each racer&apos;s
         finishing position, or mark them retired. Leave blank to clear.
       </p>
+
+      <form
+        action={saveRaceDifficulty}
+        className="mt-6 flex items-end gap-2 border-b border-neutral-800 pb-6"
+      >
+        <input type="hidden" name="race_id" value={race.id} />
+        <input type="hidden" name="championship_id" value={id} />
+        <div>
+          <label
+            htmlFor="ai_difficulty"
+            className="block text-sm font-medium text-neutral-400"
+          >
+            AI difficulty
+          </label>
+          <input
+            id="ai_difficulty"
+            name="ai_difficulty"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={race.ai_difficulty ?? ""}
+            placeholder="–"
+            className="mt-2 w-24 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-white outline-none focus:border-neutral-400"
+          />
+        </div>
+        <button
+          type="submit"
+          className="rounded-md border border-neutral-700 px-3 py-2 font-medium text-white hover:bg-neutral-900"
+        >
+          Save
+        </button>
+      </form>
 
       <form action={saveRaceResults} className="mt-6 space-y-4">
         <input type="hidden" name="race_id" value={race.id} />
