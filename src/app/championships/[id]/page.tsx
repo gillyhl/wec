@@ -8,7 +8,7 @@ import {
   pointsForRank,
   resultColor,
 } from "@/lib/championship";
-import type { RaceCell } from "@/lib/championship";
+import type { CarRow, RaceCell } from "@/lib/championship";
 import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import PointsProgressionChart from "@/components/PointsProgressionChart";
@@ -34,8 +34,11 @@ const SERIES_COLORS = [
 ];
 
 // Comma-joined names of every car a racer used, or "–" if none recorded.
-function carsLabel(cars: { name: string }[]): string {
-  return cars.length > 0 ? cars.map((c) => c.name).join(", ") : "–";
+function carsLabel(carRows: CarRow[]): string {
+  const names = carRows
+    .map((r) => r.car?.name)
+    .filter((n): n is string => !!n);
+  return names.length > 0 ? names.join(", ") : "–";
 }
 
 // Aggregate per-racer counting stats from their race results.
@@ -69,6 +72,20 @@ export default async function ChampionshipPage({
 
   // Points of the championship leader; used to show how far each racer trails.
   const leaderPoints = standings[0]?.points ?? 0;
+
+  // One display row per (racer, car) — a racer who used several cars gets
+  // several rows here, so the results grid can show which car ran which
+  // race, but position/points (only rendered on the first row, spanning the
+  // rest) reflect the racer's combined season, not a single car.
+  const displayRows = standings.flatMap((row) =>
+    row.carRows.map((carRow, i) => ({
+      row,
+      carRow,
+      isFirst: i === 0,
+      rowSpan: row.carRows.length,
+      key: `${row.racer.id}-${i}`,
+    })),
+  );
 
   // A championship can be completed once every race has at least one result.
   const racesWithResults = new Set<string>();
@@ -153,8 +170,7 @@ export default async function ChampionshipPage({
               />
               {winner.racer.first_name} {winner.racer.last_name}
               <span className="ml-2 text-sm font-normal text-neutral-400">
-                {winner.points} pts
-                {winner.cars.length > 0 && ` · ${carsLabel(winner.cars)}`}
+                {winner.points} pts · {carsLabel(winner.carRows)}
               </span>
             </p>
           </div>
@@ -177,8 +193,8 @@ export default async function ChampionshipPage({
               />
               {clinched.racer.first_name} {clinched.racer.last_name}
               <span className="ml-2 text-sm font-normal text-neutral-400">
-                unassailable lead · {clinched.points} pts
-                {clinched.cars.length > 0 && ` · ${carsLabel(clinched.cars)}`}
+                unassailable lead · {clinched.points} pts ·{" "}
+                {carsLabel(clinched.carRows)}
               </span>
             </p>
           </div>
@@ -208,31 +224,41 @@ export default async function ChampionshipPage({
               </tr>
             </thead>
             <tbody>
-              {standings.map((row) => (
-                <tr key={row.racer.id} className="h-12">
-                  <td className="border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
-                    {row.position}
-                  </td>
-                  <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
-                    <Link
-                      href={`/drivers/${row.racer.id}`}
-                      className="hover:underline"
+              {displayRows.map(({ row, carRow, isFirst, rowSpan, key }) => (
+                <tr key={key} className="h-12">
+                  {isFirst && (
+                    <td
+                      rowSpan={rowSpan}
+                      className="border border-neutral-800 px-1.5 align-top text-neutral-400 sm:px-3"
                     >
-                      <FlagIcon
-                        countryCode={row.racer.country_code}
-                        className="mr-1.5 sm:mr-2"
-                      />
-                      {/* Abbreviate first name on mobile to save horizontal space */}
-                      <span className="sm:hidden">
-                        {row.racer.first_name.charAt(0)}. {row.racer.last_name}
-                      </span>
-                      <span className="hidden sm:inline">
-                        {row.racer.first_name} {row.racer.last_name}
-                      </span>
-                    </Link>
-                  </td>
+                      {row.position}
+                    </td>
+                  )}
+                  {isFirst && (
+                    <td
+                      rowSpan={rowSpan}
+                      className="whitespace-nowrap border border-neutral-800 px-1.5 align-top font-medium sm:px-3"
+                    >
+                      <Link
+                        href={`/drivers/${row.racer.id}`}
+                        className="hover:underline"
+                      >
+                        <FlagIcon
+                          countryCode={row.racer.country_code}
+                          className="mr-1.5 sm:mr-2"
+                        />
+                        {/* Abbreviate first name on mobile to save horizontal space */}
+                        <span className="sm:hidden">
+                          {row.racer.first_name.charAt(0)}. {row.racer.last_name}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {row.racer.first_name} {row.racer.last_name}
+                        </span>
+                      </Link>
+                    </td>
+                  )}
                   <td className="whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
-                    {carsLabel(row.cars)}
+                    {carRow.car?.name ?? "–"}
                   </td>
                 </tr>
               ))}
@@ -296,10 +322,10 @@ export default async function ChampionshipPage({
                 </tr>
               </thead>
               <tbody>
-                {standings.map((row) => (
-                  <tr key={row.racer.id} className="h-12">
+                {displayRows.map(({ carRow, key }) => (
+                  <tr key={key} className="h-12">
                     {races.map((race) => {
-                      const cell = row.cells[race.id];
+                      const cell = carRow.cells[race.id];
                       if (!cell) {
                         return (
                           <td
@@ -353,18 +379,23 @@ export default async function ChampionshipPage({
               </tr>
             </thead>
             <tbody>
-              {standings.map((row) => {
+              {displayRows.map(({ row, isFirst, rowSpan, key }) => {
                 const behind = leaderPoints - row.points;
                 return (
-                  <tr key={row.racer.id} className="h-12">
-                    <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
-                      <span className="font-semibold">{row.points}</span>
-                      {behind > 0 && (
-                        <span className="block text-xs font-normal text-neutral-500">
-                          −{behind}
-                        </span>
-                      )}
-                    </td>
+                  <tr key={key} className="h-12">
+                    {isFirst && (
+                      <td
+                        rowSpan={rowSpan}
+                        className="border border-neutral-800 px-1.5 text-center align-top sm:px-3"
+                      >
+                        <span className="font-semibold">{row.points}</span>
+                        {behind > 0 && (
+                          <span className="block text-xs font-normal text-neutral-500">
+                            −{behind}
+                          </span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -447,7 +478,7 @@ export default async function ChampionshipPage({
                         </span>
                       </td>
                       <td className="w-32 whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
-                        {carsLabel(row.cars)}
+                        {carsLabel(row.carRows)}
                       </td>
                       <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
                         {stats.wins}
