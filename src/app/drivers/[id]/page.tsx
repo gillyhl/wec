@@ -50,8 +50,27 @@ export default async function DriverPage({
 
   // Seasons vary in length, so lay every season's rounds side by side up to the
   // longest season; shorter seasons leave the trailing round columns blank.
-  const maxRounds = seasons.reduce((m, s) => Math.max(m, s.races.length), 0);
+  // Every car row within a season covers the same rounds, so the first is
+  // representative of the whole season's length.
+  const maxRounds = seasons.reduce(
+    (m, s) => Math.max(m, s.carRows[0]?.races.length ?? 0),
+    0,
+  );
   const rounds = Array.from({ length: maxRounds }, (_, i) => i + 1);
+
+  // One display row per (season, car) — a season with more than one car used
+  // gets multiple rows here, so the grid can show which car ran which race,
+  // while Season/Points/Position (only rendered on the first row, spanning
+  // the rest) reflect the whole season, not a single car.
+  const seasonDisplayRows = seasons.flatMap((season) =>
+    season.carRows.map((carRow, i) => ({
+      season,
+      carRow,
+      isFirst: i === 0,
+      rowSpan: season.carRows.length,
+      key: `${season.championship.id}-${i}`,
+    })),
+  );
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10">
@@ -116,30 +135,39 @@ export default async function DriverPage({
               cell showing where the race was and the driver's finish. */}
           <h2 className="mt-10 text-lg font-semibold">Seasons</h2>
           <div className="mt-4 flex rounded-lg border border-neutral-800">
-            {/* Frozen left: season name */}
+            {/* Frozen left: season name + car */}
             <table className="shrink-0 border-collapse text-sm">
               <thead className="bg-neutral-900 text-neutral-400">
                 <tr className="h-16">
                   <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
                     Season
                   </th>
+                  <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
+                    Car
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {seasons.map((season) => (
-                  <tr key={season.championship.id} className="h-14">
-                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 sm:px-3">
-                      <Link
-                        href={`/championships/${season.championship.id}`}
-                        className="font-medium hover:underline"
+                {seasonDisplayRows.map(({ season, carRow, isFirst, rowSpan, key }) => (
+                  <tr key={key} className="h-14">
+                    {isFirst && (
+                      <td
+                        rowSpan={rowSpan}
+                        className="whitespace-nowrap border border-neutral-800 px-1.5 align-middle sm:px-3"
                       >
-                        {season.championship.name}
-                      </Link>
-                      <span className="block text-xs text-neutral-500">
-                        {RACING_SERIES_LABELS[season.championship.series]}
-                        {season.cars.length > 0 &&
-                          ` · ${season.cars.map((c) => c.name).join(", ")}`}
-                      </span>
+                        <Link
+                          href={`/championships/${season.championship.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {season.championship.name}
+                        </Link>
+                        <span className="block text-xs text-neutral-500">
+                          {RACING_SERIES_LABELS[season.championship.series]}
+                        </span>
+                      </td>
+                    )}
+                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
+                      {carRow.car?.name ?? "–"}
                     </td>
                   </tr>
                 ))}
@@ -163,10 +191,10 @@ export default async function DriverPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {seasons.map((season) => (
-                    <tr key={season.championship.id} className="h-14">
+                  {seasonDisplayRows.map(({ carRow, key }) => (
+                    <tr key={key} className="h-14">
                       {rounds.map((round) => {
-                        const entry = season.races[round - 1];
+                        const entry = carRow.races[round - 1];
                         if (!entry) {
                           return (
                             <td
@@ -232,7 +260,7 @@ export default async function DriverPage({
                 </tr>
               </thead>
               <tbody>
-                {seasons.map((season) => {
+                {seasonDisplayRows.map(({ season, isFirst, rowSpan, key }) => {
                   // A podium championship finish tints both summary cells with
                   // the same gold/silver/bronze used for race results.
                   const podium = season.position <= 3;
@@ -241,19 +269,25 @@ export default async function DriverPage({
                     : undefined;
                   const text = podium ? "text-neutral-900" : "";
                   return (
-                    <tr key={season.championship.id} className="h-14">
-                      <td
-                        className={`border border-neutral-800 px-1.5 text-center font-semibold sm:px-3 ${text}`}
-                        style={bg}
-                      >
-                        {season.points}
-                      </td>
-                      <td
-                        className={`whitespace-nowrap border border-neutral-800 px-1.5 text-center font-semibold sm:px-3 ${text}`}
-                        style={bg}
-                      >
-                        {ordinal(season.position)}
-                      </td>
+                    <tr key={key} className="h-14">
+                      {isFirst && (
+                        <td
+                          rowSpan={rowSpan}
+                          className={`border border-neutral-800 px-1.5 text-center align-middle font-semibold sm:px-3 ${text}`}
+                          style={bg}
+                        >
+                          {season.points}
+                        </td>
+                      )}
+                      {isFirst && (
+                        <td
+                          rowSpan={rowSpan}
+                          className={`whitespace-nowrap border border-neutral-800 px-1.5 text-center align-middle font-semibold sm:px-3 ${text}`}
+                          style={bg}
+                        >
+                          {ordinal(season.position)}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

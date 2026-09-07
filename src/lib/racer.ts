@@ -10,10 +10,20 @@ export interface SeasonRace {
   cell: RaceCell | null;
 }
 
+// A season's races driven in one particular car — mirrors the championship
+// standings' CarRow. The Seasons table renders one display row per
+// SeasonCarRow, so a driver who switched cars mid-season is shown across
+// multiple rows, each with only that car's races filled in.
+export interface SeasonCarRow {
+  car: Car | null;
+  // One entry per round of the championship, aligned the same way across
+  // every car row of a season so they line up in the grid.
+  races: SeasonRace[];
+}
+
 // A driver's record in one championship (season).
 export interface RacerSeason {
   championship: Championship;
-  races: SeasonRace[];
   points: number;
   // Finishing position in the championship, counted among participants only.
   position: number;
@@ -21,8 +31,10 @@ export interface RacerSeason {
   wins: number;
   podiums: number;
   retirements: number;
-  // Every car the driver used this season, in the order first driven.
-  cars: Car[];
+  // This season's races split by car, in the order each car was first
+  // driven. Always at least one entry (car: null) so the season still
+  // renders a row even if the driver hasn't recorded a car for it.
+  carRows: SeasonCarRow[];
 }
 
 // A driver's aggregated record at a single track, across every season they
@@ -216,75 +228,100 @@ export async function getRacerHistory(
     let wins = 0;
     let podiums = 0;
     let retirements = 0;
-    const seasonCars = new Map<string, Car>();
-    const races: SeasonRace[] = data.races.map((race) => {
+
+    // Group this season's races by car, in the order each was first driven —
+    // mirrors how getChampionshipData splits a racer's standings row by car.
+    const carGroups = new Map<string, { car: Car | null; cells: Record<string, RaceCell> }>();
+    const carKeyOrder: string[] = [];
+
+    for (const race of data.races) {
       const cell = row.cells[race.id] ?? null;
-      if (cell) {
-        const isWin = cell.rank === 1;
-        const isPodium = cell.rank !== null && cell.rank <= 3;
-        const pts = pointsForRank(cell.rank);
-        if (cell.retired) retirements++;
-        if (isWin) wins++;
-        if (isPodium) podiums++;
-        if (cell.car) seasonCars.set(cell.car.id, cell.car);
+      if (!cell) continue;
 
-        careerCells.push(cell);
+      const isWin = cell.rank === 1;
+      const isPodium = cell.rank !== null && cell.rank <= 3;
+      const pts = pointsForRank(cell.rank);
+      if (cell.retired) retirements++;
+      if (isWin) wins++;
+      if (isPodium) podiums++;
 
-        // Compare against every other racer who entered this same race.
-        for (const opp of participants) {
-          if (opp.racer.id === racerId) continue;
-          const oppCell = opp.cells[race.id];
-          if (!oppCell) continue;
-          const cmp = compareResults(cell, oppCell);
-          if (cmp === 0) continue;
-          const h = h2hRow(opp.racer);
-          if (cmp > 0) h.ahead++;
-          else h.behind++;
-        }
+      careerCells.push(cell);
 
-        const tr = trackRow(race.track);
-        tr.races++;
-        tr.points += pts;
-        if (cell.retired) tr.retirements++;
-        if (isWin) tr.wins++;
-        if (isPodium) tr.podiums++;
-        if (pts > 0) tr.pointsFinishes++;
+      // Compare against every other racer who entered this same race.
+      for (const opp of participants) {
+        if (opp.racer.id === racerId) continue;
+        const oppCell = opp.cells[race.id];
+        if (!oppCell) continue;
+        const cmp = compareResults(cell, oppCell);
+        if (cmp === 0) continue;
+        const h = h2hRow(opp.racer);
+        if (cmp > 0) h.ahead++;
+        else h.behind++;
+      }
+
+      const tr = trackRow(race.track);
+      tr.races++;
+      tr.points += pts;
+      if (cell.retired) tr.retirements++;
+      if (isWin) tr.wins++;
+      if (isPodium) tr.podiums++;
+      if (pts > 0) tr.pointsFinishes++;
+      if (
+        cell.rank !== null &&
+        (tr.bestFinish === null || cell.rank < tr.bestFinish)
+      ) {
+        tr.bestFinish = cell.rank;
+      }
+
+      if (cell.car) {
+        const cr = carRow(cell.car);
+        cr.races++;
+        cr.points += pts;
+        if (cell.retired) cr.retirements++;
+        if (isWin) cr.wins++;
+        if (isPodium) cr.podiums++;
+        if (pts > 0) cr.pointsFinishes++;
         if (
           cell.rank !== null &&
-          (tr.bestFinish === null || cell.rank < tr.bestFinish)
+          (cr.bestFinish === null || cell.rank < cr.bestFinish)
         ) {
-          tr.bestFinish = cell.rank;
-        }
-
-        if (cell.car) {
-          const cr = carRow(cell.car);
-          cr.races++;
-          cr.points += pts;
-          if (cell.retired) cr.retirements++;
-          if (isWin) cr.wins++;
-          if (isPodium) cr.podiums++;
-          if (pts > 0) cr.pointsFinishes++;
-          if (
-            cell.rank !== null &&
-            (cr.bestFinish === null || cell.rank < cr.bestFinish)
-          ) {
-            cr.bestFinish = cell.rank;
-          }
+          cr.bestFinish = cell.rank;
         }
       }
-      return { race, cell };
-    });
+
+      const carKey = cell.car?.id ?? "none";
+      let group = carGroups.get(carKey);
+      if (!group) {
+        group = { car: cell.car, cells: {} };
+        carGroups.set(carKey, group);
+        carKeyOrder.push(carKey);
+      }
+      group.cells[race.id] = cell;
+    }
+
+    const carRows: SeasonCarRow[] =
+      carKeyOrder.length > 0
+        ? carKeyOrder.map((key) => {
+            const group = carGroups.get(key)!;
+            return {
+              car: group.car,
+              races: data.races.map((race) => ({
+                race,
+                cell: group.cells[race.id] ?? null,
+              })),
+            };
+          })
+        : [{ car: null, races: data.races.map((race) => ({ race, cell: null })) }];
 
     seasons.push({
       championship: data.championship,
-      races,
       points: row.points,
       position: positionById.get(racerId)!,
       participants: participants.length,
       wins,
       podiums,
       retirements,
-      cars: [...seasonCars.values()],
+      carRows,
     });
   }
 
