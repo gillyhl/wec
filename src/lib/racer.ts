@@ -1,9 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import {
-  combinedStandings,
-  getChampionshipData,
-  pointsForRank,
-} from "@/lib/championship";
+import { getChampionshipData, pointsForRank } from "@/lib/championship";
 import type { RaceCell, RaceWithTrack } from "@/lib/championship";
 import type { Car, Championship, Racer, Track } from "@/lib/types";
 
@@ -197,12 +193,10 @@ export async function getRacerHistory(
   for (const data of all) {
     if (!data) continue;
 
-    // A racer's results across every car they used, pooled into one row per
-    // championship — the per-car split only matters for the standings table.
-    const merged = combinedStandings(data);
-
     // Racers who actually recorded a result in this championship.
-    const participants = merged.filter((s) => Object.keys(s.cells).length > 0);
+    const participants = data.standings.filter(
+      (s) => Object.keys(s.cells).length > 0,
+    );
 
     const row = participants.find((s) => s.racer.id === racerId);
     if (!row) continue; // driver did not take part in this season
