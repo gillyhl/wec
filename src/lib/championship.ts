@@ -21,10 +21,11 @@ export interface RaceCell {
 
 export interface StandingsRow {
   racer: Racer;
-  // The car this row's results were driven in. A racer who used more than one
-  // car across the championship gets one row per car (see getChampionshipData);
-  // null for a racer with no results yet, or results predating car tracking.
-  car: Car | null;
+  // Every distinct car this racer used in the championship, in the order
+  // first driven. All of a racer's results count towards this one row
+  // regardless of car — a racer who switched cars mid-season still gets a
+  // single row, with every car they drove listed here.
+  cars: Car[];
   position: number;
   points: number;
   // race_id -> the racer's result in that race
@@ -89,13 +90,12 @@ function compareCountback(a: number[], b: number[]): number {
   return 0;
 }
 
-// Turns a set of (racer [+ car], cells) entries into ranked, positioned
-// standings rows: computes each entry's points and cumulative total from its
-// own cells, sorts by points then countback, and assigns positions (ties
-// share a position). Shared by getChampionshipData (one row per racer per car
-// used) and combinedStandings (one row per racer, cars merged back together).
+// Turns a set of (racer, cells) entries into ranked, positioned standings
+// rows: computes each entry's points and cumulative total from its own
+// cells, sorts by points then countback, and assigns positions (ties share
+// a position).
 function buildStandings(
-  entries: { racer: Racer; car: Car | null; cells: Record<string, RaceCell> }[],
+  entries: { racer: Racer; cars: Car[]; cells: Record<string, RaceCell> }[],
   races: RaceWithTrack[],
 ): StandingsRow[] {
   const withCounts = entries.map((entry) => {
@@ -153,9 +153,7 @@ export interface ChampionshipData {
   championship: Championship;
   races: RaceWithTrack[];
   racers: Racer[];
-  // One row per racer per car they used. A racer who drove a single car all
-  // season gets one row; a racer who switched cars gets one row per car (see
-  // combinedStandings for a merged, one-row-per-racer view).
+  // One row per racer, regardless of how many cars they used.
   standings: StandingsRow[];
 }
 
@@ -213,31 +211,18 @@ export async function getChampionshipData(
     resultsByRacer.set(r.racer_id, list);
   }
 
-  // One entry per racer per distinct car they used. A racer with no results
-  // yet still gets a single (carless) entry, so they always appear as a row.
-  const entries: { racer: Racer; car: Car | null; cells: Record<string, RaceCell> }[] =
-    [];
-  for (const racer of racers ?? []) {
-    const racerResults = resultsByRacer.get(racer.id);
-    if (!racerResults || racerResults.length === 0) {
-      entries.push({ racer, car: null, cells: {} });
-      continue;
-    }
-
-    const byCar = new Map<string, { car: Car | null; cells: Record<string, RaceCell> }>();
+  // One entry per racer, regardless of which car(s) they used — every result
+  // counts towards the same row, and every distinct car they drove is listed.
+  const entries = (racers ?? []).map((racer) => {
+    const racerResults = resultsByRacer.get(racer.id) ?? [];
+    const cells: Record<string, RaceCell> = {};
+    const carsById = new Map<string, Car>();
     for (const r of racerResults) {
-      const carKey = r.car_id ?? "none";
-      let group = byCar.get(carKey);
-      if (!group) {
-        group = { car: r.car ?? null, cells: {} };
-        byCar.set(carKey, group);
-      }
-      group.cells[r.race_id] = { rank: r.rank, retired: r.retired, car: r.car ?? null };
+      cells[r.race_id] = { rank: r.rank, retired: r.retired, car: r.car ?? null };
+      if (r.car) carsById.set(r.car.id, r.car);
     }
-    for (const group of byCar.values()) {
-      entries.push({ racer, car: group.car, cells: group.cells });
-    }
-  }
+    return { racer, cars: [...carsById.values()], cells };
+  });
 
   const standings = buildStandings(entries, orderedRaces);
 
@@ -247,26 +232,6 @@ export async function getChampionshipData(
     racers: racers ?? [],
     standings,
   };
-}
-
-// Merges a racer's per-car standings rows back into a single row per racer —
-// their results across every car pooled together, re-ranked against every
-// other racer's combined total. Used wherever the split by car doesn't
-// matter (career/season totals), since a race result belongs to exactly one
-// car, so a racer's rows never share a race and can always be merged cleanly.
-export function combinedStandings(data: ChampionshipData): StandingsRow[] {
-  const byRacer = new Map<string, { racer: Racer; cells: Record<string, RaceCell> }>();
-  for (const row of data.standings) {
-    let group = byRacer.get(row.racer.id);
-    if (!group) {
-      group = { racer: row.racer, cells: {} };
-      byRacer.set(row.racer.id, group);
-    }
-    Object.assign(group.cells, row.cells);
-  }
-
-  const entries = [...byRacer.values()].map((g) => ({ ...g, car: null }));
-  return buildStandings(entries, data.races);
 }
 
 // Points on offer for a single race win — used to work out when a title has
