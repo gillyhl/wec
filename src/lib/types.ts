@@ -17,6 +17,12 @@ export interface Track {
   archived: boolean;
 }
 
+export interface Car {
+  id: string;
+  name: string;
+  source: RacingSeries;
+}
+
 export interface Racer {
   id: string;
   first_name: string;
@@ -45,6 +51,8 @@ export interface RaceResult {
   id: string;
   race_id: string;
   racer_id: string;
+  // null for results recorded before car tracking was added.
+  car_id: string | null;
   // null when the racer retired (DNF) — see `retired`.
   rank: number | null;
   retired: boolean;

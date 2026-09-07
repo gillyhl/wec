@@ -21,8 +21,9 @@ Track WEC championships between drivers. Built with **Next.js (App Router)** and
 
 ## Data model
 
-`championships`, `tracks`, `racers`, `races`, `race_results`, and
-`championship_points` — see [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql).
+`championships`, `tracks`, `cars`, `racers`, `races`, `race_results`, and
+`championship_points` — see [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
+and [`supabase/migrations/0007_cars.sql`](supabase/migrations/0007_cars.sql).
 
 Points use the standard WEC/F1-style top-10 scheme
 (25-18-15-12-10-8-6-4-2-1). Change the `points_for_rank` SQL function to adjust it.

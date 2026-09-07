@@ -1,7 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import { getChampionshipData, pointsForRank } from "@/lib/championship";
+import {
+  combinedStandings,
+  getChampionshipData,
+  pointsForRank,
+} from "@/lib/championship";
 import type { RaceCell, RaceWithTrack } from "@/lib/championship";
-import type { Championship, Racer, Track } from "@/lib/types";
+import type { Car, Championship, Racer, Track } from "@/lib/types";
 
 // A single race in a season, paired with the driver's result there.
 export interface SeasonRace {
@@ -21,6 +25,8 @@ export interface RacerSeason {
   wins: number;
   podiums: number;
   retirements: number;
+  // Every car the driver used this season, in the order first driven.
+  cars: Car[];
 }
 
 // A driver's aggregated record at a single track, across every season they
@@ -29,6 +35,19 @@ export interface DriverTrackRow {
   track: Track;
   races: number;
   // Best (lowest) finishing position; null if the driver only ever retired.
+  bestFinish: number | null;
+  wins: number;
+  podiums: number;
+  pointsFinishes: number;
+  retirements: number;
+  points: number;
+}
+
+// A driver's aggregated record in a single car, across every season they
+// raced it. Mirrors DriverTrackRow.
+export interface DriverCarRow {
+  car: Car;
+  races: number;
   bestFinish: number | null;
   wins: number;
   podiums: number;
@@ -60,6 +79,7 @@ export interface RacerHistory {
   racer: Racer;
   seasons: RacerSeason[];
   trackStats: DriverTrackRow[];
+  carStats: DriverCarRow[];
   streaks: DriverStreaks;
   headToHead: HeadToHeadRow[];
 }
@@ -154,13 +174,35 @@ export async function getRacerHistory(
     return r;
   };
 
+  // Per-car running totals, keyed by car id.
+  const carRows = new Map<string, DriverCarRow>();
+  const carRow = (car: Car): DriverCarRow => {
+    let r = carRows.get(car.id);
+    if (!r) {
+      r = {
+        car,
+        races: 0,
+        bestFinish: null,
+        wins: 0,
+        podiums: 0,
+        pointsFinishes: 0,
+        retirements: 0,
+        points: 0,
+      };
+      carRows.set(car.id, r);
+    }
+    return r;
+  };
+
   for (const data of all) {
     if (!data) continue;
 
+    // A racer's results across every car they used, pooled into one row per
+    // championship — the per-car split only matters for the standings table.
+    const merged = combinedStandings(data);
+
     // Racers who actually recorded a result in this championship.
-    const participants = data.standings.filter(
-      (s) => Object.keys(s.cells).length > 0,
-    );
+    const participants = merged.filter((s) => Object.keys(s.cells).length > 0);
 
     const row = participants.find((s) => s.racer.id === racerId);
     if (!row) continue; // driver did not take part in this season
@@ -180,6 +222,7 @@ export async function getRacerHistory(
     let wins = 0;
     let podiums = 0;
     let retirements = 0;
+    const seasonCars = new Map<string, Car>();
     const races: SeasonRace[] = data.races.map((race) => {
       const cell = row.cells[race.id] ?? null;
       if (cell) {
@@ -189,6 +232,7 @@ export async function getRacerHistory(
         if (cell.retired) retirements++;
         if (isWin) wins++;
         if (isPodium) podiums++;
+        if (cell.car) seasonCars.set(cell.car.id, cell.car);
 
         careerCells.push(cell);
 
@@ -217,6 +261,22 @@ export async function getRacerHistory(
         ) {
           tr.bestFinish = cell.rank;
         }
+
+        if (cell.car) {
+          const cr = carRow(cell.car);
+          cr.races++;
+          cr.points += pts;
+          if (cell.retired) cr.retirements++;
+          if (isWin) cr.wins++;
+          if (isPodium) cr.podiums++;
+          if (pts > 0) cr.pointsFinishes++;
+          if (
+            cell.rank !== null &&
+            (cr.bestFinish === null || cell.rank < cr.bestFinish)
+          ) {
+            cr.bestFinish = cell.rank;
+          }
+        }
       }
       return { race, cell };
     });
@@ -230,6 +290,7 @@ export async function getRacerHistory(
       wins,
       podiums,
       retirements,
+      cars: [...seasonCars.values()],
     });
   }
 
@@ -241,6 +302,15 @@ export async function getRacerHistory(
       b.wins - a.wins ||
       (a.bestFinish ?? Infinity) - (b.bestFinish ?? Infinity) ||
       a.track.name.localeCompare(b.track.name),
+  );
+
+  // Same ordering, for the driver's per-car record.
+  const carStats = [...carRows.values()].sort(
+    (a, b) =>
+      b.points - a.points ||
+      b.wins - a.wins ||
+      (a.bestFinish ?? Infinity) - (b.bestFinish ?? Infinity) ||
+      a.car.name.localeCompare(b.car.name),
   );
 
   // Most-contested rivalries first, then by how favourable the record is.
@@ -255,6 +325,7 @@ export async function getRacerHistory(
     racer,
     seasons,
     trackStats,
+    carStats,
     streaks: longestStreaks(careerCells),
     headToHead,
   };

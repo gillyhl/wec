@@ -144,7 +144,9 @@ export async function createChampionship(formData: FormData) {
 
 // Saves finishing positions for a race. A racer can be marked retired (DNF)
 // instead of given a position; a blank/zero rank with no retirement clears that
-// racer's result. The DB trigger recomputes championship points automatically.
+// racer's result. Every result saved (finish or retirement) must record which
+// car the racer used. The DB trigger recomputes championship points
+// automatically.
 export async function saveRaceResults(formData: FormData) {
   const { isAdmin } = await getAuth();
   if (!isAdmin) throw new Error("Not authorized");
@@ -157,12 +159,13 @@ export async function saveRaceResults(formData: FormData) {
 
   const { data: racers } = await supabase
     .from("racers")
-    .select("id")
-    .returns<{ id: string }[]>();
+    .select("id, first_name, last_name")
+    .returns<{ id: string; first_name: string; last_name: string }[]>();
 
   const toUpsert: {
     race_id: string;
     racer_id: string;
+    car_id: string;
     rank: number | null;
     retired: boolean;
   }[] = [];
@@ -172,14 +175,37 @@ export async function saveRaceResults(formData: FormData) {
     const retired = formData.get(`retired_${racer.id}`) != null;
     const raw = String(formData.get(`rank_${racer.id}`) ?? "").trim();
     const rank = Number.parseInt(raw, 10);
+    const carId = String(formData.get(`car_${racer.id}`) ?? "").trim();
 
     if (retired) {
-      // A retirement has no finishing position.
-      toUpsert.push({ race_id: raceId, racer_id: racer.id, rank: null, retired: true });
+      // A retirement has no finishing position, but still needs a car.
+      if (!carId) {
+        throw new Error(
+          `Select a car for ${racer.first_name} ${racer.last_name}'s result.`,
+        );
+      }
+      toUpsert.push({
+        race_id: raceId,
+        racer_id: racer.id,
+        car_id: carId,
+        rank: null,
+        retired: true,
+      });
     } else if (raw === "" || Number.isNaN(rank) || rank < 1) {
       toClear.push(racer.id);
     } else {
-      toUpsert.push({ race_id: raceId, racer_id: racer.id, rank, retired: false });
+      if (!carId) {
+        throw new Error(
+          `Select a car for ${racer.first_name} ${racer.last_name}'s result.`,
+        );
+      }
+      toUpsert.push({
+        race_id: raceId,
+        racer_id: racer.id,
+        car_id: carId,
+        rank,
+        retired: false,
+      });
     }
   }
 
