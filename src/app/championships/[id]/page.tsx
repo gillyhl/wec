@@ -207,11 +207,15 @@ export default async function ChampionshipPage({
           No racers found.
         </div>
       ) : (
-        <div className="mt-6 flex rounded-lg border border-neutral-800">
+        <div className="mt-6 flex items-start rounded-lg border border-neutral-800">
           {/* Frozen left: position + racer + car */}
           <table className="shrink-0 border-collapse text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
-              <tr className="h-16">
+              {/* Matches the taller race-column header (round + flag + track
+                  code + edit link) so row lines stay aligned with the
+                  scrollable table below — these are separate <table>
+                  elements, so their row heights aren't otherwise tied. */}
+              <tr className="h-20">
                 <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
                   #
                 </th>
@@ -279,7 +283,7 @@ export default async function ChampionshipPage({
           <div className="flex-1 overflow-x-auto">
             <table className="w-full table-fixed border-collapse text-sm">
               <thead className="bg-neutral-900 text-neutral-400">
-                <tr className="h-16">
+                <tr className="h-20">
                   {races.map((race) => (
                     <th
                       key={race.id}
@@ -372,7 +376,7 @@ export default async function ChampionshipPage({
           {/* Frozen right: points */}
           <table className="shrink-0 border-collapse text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
-              <tr className="h-16">
+              <tr className="h-20">
                 <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:px-3">
                   Points
                 </th>
