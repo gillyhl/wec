@@ -16,6 +16,12 @@ export default async function SiteHeader() {
     </Link>
   );
 
+  const carsLink = (
+    <Link href="/cars" className="text-neutral-400 hover:text-white">
+      Cars
+    </Link>
+  );
+
   const newChampionshipLink = isAdmin ? (
     <Link
       href="/championships/new"
@@ -47,6 +53,7 @@ export default async function SiteHeader() {
         {/* Desktop nav */}
         <nav className="hidden items-center gap-4 text-sm sm:flex">
           {tracksLink}
+          {carsLink}
           {statsLink}
           {newChampionshipLink}
           {authAction}
@@ -76,6 +83,7 @@ export default async function SiteHeader() {
           </summary>
           <nav className="absolute right-0 z-10 mt-2 flex w-44 flex-col items-stretch gap-3 rounded-md border border-neutral-800 bg-neutral-950 p-3 shadow-lg">
             {tracksLink}
+            {carsLink}
             {statsLink}
             {newChampionshipLink}
             {authAction}

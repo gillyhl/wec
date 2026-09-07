@@ -37,7 +37,7 @@ export default async function DriverPage({
   const history = await getRacerHistory(id);
 
   if (!history) notFound();
-  const { racer, seasons, trackStats, streaks, headToHead } = history;
+  const { racer, seasons, trackStats, carStats, streaks, headToHead } = history;
 
   const streakTiles = [
     { label: "Win streak", value: streaks.wins },
@@ -137,6 +137,8 @@ export default async function DriverPage({
                       </Link>
                       <span className="block text-xs text-neutral-500">
                         {RACING_SERIES_LABELS[season.championship.series]}
+                        {season.cars.length > 0 &&
+                          ` · ${season.cars.map((c) => c.name).join(", ")}`}
                       </span>
                     </td>
                   </tr>
@@ -188,7 +190,11 @@ export default async function DriverPage({
                                   }
                                 : undefined
                             }
-                            title={race.track.name}
+                            title={
+                              cell?.car
+                                ? `${race.track.name} — ${cell.car.name}`
+                                : race.track.name
+                            }
                           >
                             <div
                               className={`flex flex-col items-center leading-tight ${
@@ -301,6 +307,50 @@ export default async function DriverPage({
               </tbody>
             </table>
           </div>
+
+          {/* Per-car record, aggregated across every season. */}
+          {carStats.length > 0 && (
+            <>
+              <h2 className="mt-10 text-lg font-semibold">Cars</h2>
+              <div className="mt-4 w-fit max-w-full overflow-x-auto rounded-lg border border-neutral-800">
+                <table className="border-collapse text-sm">
+                  <thead className="bg-neutral-900 text-neutral-400">
+                    <tr>
+                      <th className="border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
+                        Car
+                      </th>
+                      <th className={headCell}>Races</th>
+                      <th className={headCell}>Best finish</th>
+                      <th className={headCell}>Wins</th>
+                      <th className={headCell}>Podiums</th>
+                      <th className={headCell}>Points finishes</th>
+                      <th className={headCell}>Retirements</th>
+                      <th className={headCell}>Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {carStats.map((row) => (
+                      <tr key={row.car.id} className="h-12">
+                        <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
+                          {row.car.name}
+                          <span className="block text-xs font-normal text-neutral-500">
+                            {RACING_SERIES_LABELS[row.car.source]}
+                          </span>
+                        </td>
+                        <td className={numCell}>{row.races}</td>
+                        <td className={numCell}>{row.bestFinish ?? "—"}</td>
+                        <td className={numCell}>{row.wins}</td>
+                        <td className={numCell}>{row.podiums}</td>
+                        <td className={numCell}>{row.pointsFinishes}</td>
+                        <td className={numCell}>{row.retirements}</td>
+                        <td className={`${numCell} font-semibold`}>{row.points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           {/* Longest career streaks, over the races the driver entered. */}
           <h2 className="mt-10 text-lg font-semibold">Longest streaks</h2>

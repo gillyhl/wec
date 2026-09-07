@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
+  Car,
   Championship,
   Race,
   RaceResult,
@@ -11,14 +12,19 @@ export interface RaceWithTrack extends Race {
   track: Track;
 }
 
-// A racer's result in a single race.
+// A racer's result in a single race, and which car they drove it in.
 export interface RaceCell {
   rank: number | null;
   retired: boolean;
+  car: Car | null;
 }
 
 export interface StandingsRow {
   racer: Racer;
+  // The car this row's results were driven in. A racer who used more than one
+  // car across the championship gets one row per car (see getChampionshipData);
+  // null for a racer with no results yet, or results predating car tracking.
+  car: Car | null;
   position: number;
   points: number;
   // race_id -> the racer's result in that race
@@ -83,6 +89,55 @@ function compareCountback(a: number[], b: number[]): number {
   return 0;
 }
 
+// Turns a set of (racer [+ car], cells) entries into ranked, positioned
+// standings rows: computes each entry's points and cumulative total from its
+// own cells, sorts by points then countback, and assigns positions (ties
+// share a position). Shared by getChampionshipData (one row per racer per car
+// used) and combinedStandings (one row per racer, cars merged back together).
+function buildStandings(
+  entries: { racer: Racer; car: Car | null; cells: Record<string, RaceCell> }[],
+  races: RaceWithTrack[],
+): StandingsRow[] {
+  const withCounts = entries.map((entry) => {
+    // Walk the races in round order, accumulating points per race.
+    let running = 0;
+    const cumulative = races.map((race) => {
+      const cell = entry.cells[race.id];
+      running += cell ? pointsForRank(cell.rank) : 0;
+      return running;
+    });
+    return {
+      ...entry,
+      points: cumulative[cumulative.length - 1] ?? 0,
+      counts: rankCounts(entry.cells),
+      cumulative,
+      position: 0,
+    };
+  });
+
+  withCounts.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const cb = compareCountback(a.counts, b.counts);
+    if (cb !== 0) return cb;
+    // Genuinely tied: order alphabetically for a stable display only;
+    // they are assigned the same position below.
+    return a.racer.last_name.localeCompare(b.racer.last_name);
+  });
+
+  // Assign positions, giving entries level on both points and the countback
+  // the same position (e.g. two tied for 3rd, then next is 5th).
+  return withCounts.map((row, i) => {
+    const prev = withCounts[i - 1];
+    const tiedWithPrev =
+      prev !== undefined &&
+      prev.points === row.points &&
+      compareCountback(prev.counts, row.counts) === 0;
+    row.position = tiedWithPrev ? prev.position : i + 1;
+    const { counts: _counts, ...rest } = row;
+    return rest;
+  });
+}
+
 // The championship winner: the racer in first place, once any points have been
 // scored. Standings are pre-sorted (points, then countback), so this is the top
 // row. Returns null when nothing has been scored yet.
@@ -98,7 +153,14 @@ export interface ChampionshipData {
   championship: Championship;
   races: RaceWithTrack[];
   racers: Racer[];
+  // One row per racer per car they used. A racer who drove a single car all
+  // season gets one row; a racer who switched cars gets one row per car (see
+  // combinedStandings for a merged, one-row-per-racer view).
   standings: StandingsRow[];
+}
+
+interface RaceResultWithCar extends RaceResult {
+  car: Car | null;
 }
 
 // Loads everything needed to render a championship's standings matrix.
@@ -132,82 +194,79 @@ export async function getChampionshipData(
 
   const raceIds = (races ?? []).map((r) => r.id);
 
-  let results: RaceResult[] = [];
+  let results: RaceResultWithCar[] = [];
   if (raceIds.length > 0) {
     const { data } = await supabase
       .from("race_results")
-      .select("id, race_id, racer_id, rank, retired")
+      .select("id, race_id, racer_id, car_id, rank, retired, car:cars(*)")
       .in("race_id", raceIds)
-      .returns<RaceResult[]>();
+      .returns<RaceResultWithCar[]>();
     results = data ?? [];
-  }
-
-  const { data: points } = await supabase
-    .from("championship_points")
-    .select("racer_id, points")
-    .eq("championship_id", championshipId)
-    .returns<{ racer_id: string; points: number }[]>();
-
-  const pointsByRacer = new Map<string, number>(
-    (points ?? []).map((p) => [p.racer_id, p.points]),
-  );
-
-  const cellsByRacer = new Map<string, Record<string, RaceCell>>();
-  for (const r of results) {
-    const existing = cellsByRacer.get(r.racer_id) ?? {};
-    existing[r.race_id] = { rank: r.rank, retired: r.retired };
-    cellsByRacer.set(r.racer_id, existing);
   }
 
   const orderedRaces = races ?? [];
 
-  const sorted = (racers ?? [])
-    .map((racer) => {
-      const cells = cellsByRacer.get(racer.id) ?? {};
-      // Walk the races in round order, accumulating points per race.
-      let running = 0;
-      const cumulative = orderedRaces.map((race) => {
-        const cell = cells[race.id];
-        running += cell ? pointsForRank(cell.rank) : 0;
-        return running;
-      });
-      return {
-        racer,
-        points: pointsByRacer.get(racer.id) ?? 0,
-        cells,
-        counts: rankCounts(cells),
-        cumulative,
-        position: 0,
-      };
-    })
-    .sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      const cb = compareCountback(a.counts, b.counts);
-      if (cb !== 0) return cb;
-      // Genuinely tied: order alphabetically for a stable display only;
-      // they are assigned the same position below.
-      return a.racer.last_name.localeCompare(b.racer.last_name);
-    });
+  const resultsByRacer = new Map<string, RaceResultWithCar[]>();
+  for (const r of results) {
+    const list = resultsByRacer.get(r.racer_id) ?? [];
+    list.push(r);
+    resultsByRacer.set(r.racer_id, list);
+  }
 
-  // Assign positions, giving racers who are level on both points and the
-  // countback the same position (e.g. two tied for 3rd, then next is 5th).
-  const standings: StandingsRow[] = sorted.map((row, i) => {
-    const prev = sorted[i - 1];
-    const tiedWithPrev =
-      prev !== undefined &&
-      prev.points === row.points &&
-      compareCountback(prev.counts, row.counts) === 0;
-    row.position = tiedWithPrev ? prev.position : i + 1;
-    const { counts: _counts, ...rest } = row;
-    return rest;
-  });
+  // One entry per racer per distinct car they used. A racer with no results
+  // yet still gets a single (carless) entry, so they always appear as a row.
+  const entries: { racer: Racer; car: Car | null; cells: Record<string, RaceCell> }[] =
+    [];
+  for (const racer of racers ?? []) {
+    const racerResults = resultsByRacer.get(racer.id);
+    if (!racerResults || racerResults.length === 0) {
+      entries.push({ racer, car: null, cells: {} });
+      continue;
+    }
+
+    const byCar = new Map<string, { car: Car | null; cells: Record<string, RaceCell> }>();
+    for (const r of racerResults) {
+      const carKey = r.car_id ?? "none";
+      let group = byCar.get(carKey);
+      if (!group) {
+        group = { car: r.car ?? null, cells: {} };
+        byCar.set(carKey, group);
+      }
+      group.cells[r.race_id] = { rank: r.rank, retired: r.retired, car: r.car ?? null };
+    }
+    for (const group of byCar.values()) {
+      entries.push({ racer, car: group.car, cells: group.cells });
+    }
+  }
+
+  const standings = buildStandings(entries, orderedRaces);
 
   return {
     championship,
-    races: races ?? [],
+    races: orderedRaces,
     racers: racers ?? [],
     standings,
   };
+}
+
+// Merges a racer's per-car standings rows back into a single row per racer —
+// their results across every car pooled together, re-ranked against every
+// other racer's combined total. Used wherever the split by car doesn't
+// matter (career/season totals), since a race result belongs to exactly one
+// car, so a racer's rows never share a race and can always be merged cleanly.
+export function combinedStandings(data: ChampionshipData): StandingsRow[] {
+  const byRacer = new Map<string, { racer: Racer; cells: Record<string, RaceCell> }>();
+  for (const row of data.standings) {
+    let group = byRacer.get(row.racer.id);
+    if (!group) {
+      group = { racer: row.racer, cells: {} };
+      byRacer.set(row.racer.id, group);
+    }
+    Object.assign(group.cells, row.cells);
+  }
+
+  const entries = [...byRacer.values()].map((g) => ({ ...g, car: null }));
+  return buildStandings(entries, data.races);
 }
 
 // Points on offer for a single race win — used to work out when a title has

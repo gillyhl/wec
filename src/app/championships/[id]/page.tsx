@@ -149,6 +149,7 @@ export default async function ChampionshipPage({
               {winner.racer.first_name} {winner.racer.last_name}
               <span className="ml-2 text-sm font-normal text-neutral-400">
                 {winner.points} pts
+                {winner.car && ` · ${winner.car.name}`}
               </span>
             </p>
           </div>
@@ -172,6 +173,7 @@ export default async function ChampionshipPage({
               {clinched.racer.first_name} {clinched.racer.last_name}
               <span className="ml-2 text-sm font-normal text-neutral-400">
                 unassailable lead · {clinched.points} pts
+                {clinched.car && ` · ${clinched.car.name}`}
               </span>
             </p>
           </div>
@@ -185,7 +187,7 @@ export default async function ChampionshipPage({
         </div>
       ) : (
         <div className="mt-6 flex rounded-lg border border-neutral-800">
-          {/* Frozen left: position + racer */}
+          {/* Frozen left: position + racer + car */}
           <table className="shrink-0 border-collapse text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
               <tr className="h-16">
@@ -195,11 +197,14 @@ export default async function ChampionshipPage({
                 <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
                   Racer
                 </th>
+                <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
+                  Car
+                </th>
               </tr>
             </thead>
             <tbody>
               {standings.map((row) => (
-                <tr key={row.racer.id} className="h-12">
+                <tr key={`${row.racer.id}-${row.car?.id ?? "none"}`} className="h-12">
                   <td className="border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
                     {row.position}
                   </td>
@@ -221,13 +226,16 @@ export default async function ChampionshipPage({
                       </span>
                     </Link>
                   </td>
+                  <td className="whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
+                    {row.car?.name ?? "–"}
+                  </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="h-8">
                 <td
-                  colSpan={2}
+                  colSpan={3}
                   className="border border-neutral-800 px-1.5 text-[10px] font-medium text-neutral-500 sm:px-3"
                 >
                   AI difficulty
@@ -284,7 +292,7 @@ export default async function ChampionshipPage({
               </thead>
               <tbody>
                 {standings.map((row) => (
-                  <tr key={row.racer.id} className="h-12">
+                  <tr key={`${row.racer.id}-${row.car?.id ?? "none"}`} className="h-12">
                     {races.map((race) => {
                       const cell = row.cells[race.id];
                       if (!cell) {
@@ -343,7 +351,7 @@ export default async function ChampionshipPage({
               {standings.map((row) => {
                 const behind = leaderPoints - row.points;
                 return (
-                  <tr key={row.racer.id} className="h-12">
+                  <tr key={`${row.racer.id}-${row.car?.id ?? "none"}`} className="h-12">
                     <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
                       <span className="font-semibold">{row.points}</span>
                       {behind > 0 && (
@@ -399,6 +407,9 @@ export default async function ChampionshipPage({
                   <th className="w-44 border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
                     Racer
                   </th>
+                  <th className="w-32 border border-neutral-800 px-1.5 py-2 text-left font-medium sm:px-3">
+                    Car
+                  </th>
                   <th className="w-20 border border-neutral-800 px-1.5 py-2 text-center font-medium leading-tight sm:px-3">
                     Wins
                   </th>
@@ -417,7 +428,7 @@ export default async function ChampionshipPage({
                 {standings.map((row) => {
                   const stats = racerStats(row.cells);
                   return (
-                    <tr key={row.racer.id} className="h-12">
+                    <tr key={`${row.racer.id}-${row.car?.id ?? "none"}`} className="h-12">
                       <td className="w-44 whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
                         <FlagIcon
                           countryCode={row.racer.country_code}
@@ -429,6 +440,9 @@ export default async function ChampionshipPage({
                         <span className="hidden sm:inline">
                           {row.racer.first_name} {row.racer.last_name}
                         </span>
+                      </td>
+                      <td className="w-32 whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
+                        {row.car?.name ?? "–"}
                       </td>
                       <td className="border border-neutral-800 px-1.5 text-center sm:px-3">
                         {stats.wins}
@@ -461,12 +475,21 @@ export default async function ChampionshipPage({
           <div className="mt-4 rounded-lg border border-neutral-800 p-4">
             <PointsProgressionChart
               raceLabels={races.map((race) => race.track.short_code)}
-              series={standings.map((row, i) => ({
-                id: row.racer.id,
-                label: `${row.racer.first_name.charAt(0)}. ${row.racer.last_name}`,
-                color: SERIES_COLORS[i % SERIES_COLORS.length],
-                cumulative: row.cumulative,
-              }))}
+              series={standings.map((row, i) => {
+                // A racer who switched cars gets multiple rows; disambiguate
+                // their lines in the legend by naming the car in that case.
+                const splitAcrossCars =
+                  standings.filter((r) => r.racer.id === row.racer.id).length >
+                  1;
+                return {
+                  id: `${row.racer.id}-${row.car?.id ?? "none"}`,
+                  label: splitAcrossCars
+                    ? `${row.racer.first_name.charAt(0)}. ${row.racer.last_name} (${row.car?.name ?? "no car"})`
+                    : `${row.racer.first_name.charAt(0)}. ${row.racer.last_name}`,
+                  color: SERIES_COLORS[i % SERIES_COLORS.length],
+                  cumulative: row.cumulative,
+                };
+              })}
             />
           </div>
         </div>

@@ -9,7 +9,7 @@ import {
   saveRaceDifficulty,
   saveRaceResults,
 } from "../../../actions";
-import type { Racer, RaceResult, Track } from "@/lib/types";
+import type { Car, Racer, RaceResult, Track } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ interface RaceRow {
   championship_id: string;
   ai_difficulty: number | null;
   track: Track;
+  championship: { series: string };
 }
 
 export default async function RaceResultsPage({
@@ -34,7 +35,9 @@ export default async function RaceResultsPage({
 
   const { data: race } = await supabase
     .from("races")
-    .select("id, round, championship_id, ai_difficulty, track:tracks(*)")
+    .select(
+      "id, round, championship_id, ai_difficulty, track:tracks(*), championship:championships(series)",
+    )
     .eq("id", raceId)
     .eq("championship_id", id)
     .maybeSingle<RaceRow>();
@@ -47,9 +50,17 @@ export default async function RaceResultsPage({
     .order("last_name", { ascending: true })
     .returns<Racer[]>();
 
+  const { data: cars } = await supabase
+    .from("cars")
+    .select("id, name, source")
+    .eq("source", race.championship.series)
+    .order("name")
+    .returns<Car[]>();
+  const carsForSeries = cars ?? [];
+
   const { data: results } = await supabase
     .from("race_results")
-    .select("id, race_id, racer_id, rank, retired")
+    .select("id, race_id, racer_id, car_id, rank, retired")
     .eq("race_id", raceId)
     .returns<RaceResult[]>();
 
@@ -72,8 +83,19 @@ export default async function RaceResultsPage({
       </h1>
       <p className="mt-1 text-sm text-neutral-400">
         Round {race.round} · {race.track.short_code} · Enter each racer&apos;s
-        finishing position, or mark them retired. Leave blank to clear.
+        car and finishing position, or mark them retired. Leave the position
+        blank to clear.
       </p>
+
+      {carsForSeries.length === 0 && (
+        <p className="mt-4 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-400">
+          No cars have been added for this game yet.{" "}
+          <Link href="/cars/new" className="underline hover:text-yellow-300">
+            Add one
+          </Link>{" "}
+          before recording results.
+        </p>
+      )}
 
       <form
         action={saveRaceDifficulty}
@@ -115,13 +137,25 @@ export default async function RaceResultsPage({
           return (
             <div
               key={racer.id}
-              className="flex items-center justify-between gap-4"
+              className="space-y-2 border-b border-neutral-900 pb-4 last:border-0 last:pb-0"
             >
-              <label htmlFor={`rank_${racer.id}`} className="text-sm">
+              <label htmlFor={`rank_${racer.id}`} className="block text-sm font-medium">
                 <FlagIcon countryCode={racer.country_code} className="mr-2" />
                 {racer.first_name} {racer.last_name}
               </label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  name={`car_${racer.id}`}
+                  defaultValue={result?.car_id ?? ""}
+                  className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm text-white outline-none focus:border-neutral-400"
+                >
+                  <option value="">Car –</option>
+                  {carsForSeries.map((car) => (
+                    <option key={car.id} value={car.id}>
+                      {car.name}
+                    </option>
+                  ))}
+                </select>
                 <label className="flex items-center gap-1.5 text-sm text-neutral-400">
                   <input
                     name={`retired_${racer.id}`}
@@ -138,7 +172,7 @@ export default async function RaceResultsPage({
                   min={1}
                   defaultValue={result?.rank ?? ""}
                   placeholder="–"
-                  className="w-20 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-white outline-none focus:border-neutral-400"
+                  className="w-16 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-white outline-none focus:border-neutral-400"
                 />
               </div>
             </div>
