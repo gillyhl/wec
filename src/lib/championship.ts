@@ -19,19 +19,31 @@ export interface RaceCell {
   car: Car | null;
 }
 
+// A racer's results driven in one particular car, a subset of their full
+// `cells`. The standings matrix renders one display row per CarRow, so a
+// racer who switched cars mid-season is shown across multiple rows — but
+// position and points (computed from the full `cells` on StandingsRow) are
+// combined across every car and only need showing once per racer.
+export interface CarRow {
+  car: Car | null;
+  // race_id -> the racer's result in that race, restricted to races driven
+  // in this car.
+  cells: Record<string, RaceCell>;
+}
+
 export interface StandingsRow {
   racer: Racer;
-  // Every distinct car this racer used in the championship, in the order
-  // first driven. All of a racer's results count towards this one row
-  // regardless of car — a racer who switched cars mid-season still gets a
-  // single row, with every car they drove listed here.
-  cars: Car[];
   position: number;
   points: number;
-  // race_id -> the racer's result in that race
+  // race_id -> the racer's result in that race, across every car — used for
+  // this racer's combined points/position/countback and season stats.
   cells: Record<string, RaceCell>;
   // Cumulative championship points after each race, aligned to `races` order.
   cumulative: number[];
+  // This racer's results split by car, in the order each car was first
+  // driven. Always at least one entry (car: null, empty cells) for a racer
+  // with no results yet, so they still render a row.
+  carRows: CarRow[];
 }
 
 // Standard WEC/F1-style points for the top 10 finishers. Mirrors the
@@ -90,12 +102,16 @@ function compareCountback(a: number[], b: number[]): number {
   return 0;
 }
 
-// Turns a set of (racer, cells) entries into ranked, positioned standings
-// rows: computes each entry's points and cumulative total from its own
-// cells, sorts by points then countback, and assigns positions (ties share
-// a position).
+// Turns a set of (racer, cells, carRows) entries into ranked, positioned
+// standings rows: computes each entry's points and cumulative total from its
+// combined cells, sorts by points then countback, and assigns positions
+// (ties share a position).
 function buildStandings(
-  entries: { racer: Racer; cars: Car[]; cells: Record<string, RaceCell> }[],
+  entries: {
+    racer: Racer;
+    cells: Record<string, RaceCell>;
+    carRows: CarRow[];
+  }[],
   races: RaceWithTrack[],
 ): StandingsRow[] {
   const withCounts = entries.map((entry) => {
@@ -204,24 +220,40 @@ export async function getChampionshipData(
 
   const orderedRaces = races ?? [];
 
-  const resultsByRacer = new Map<string, RaceResultWithCar[]>();
+  const resultsByRace = new Map<string, RaceResultWithCar>();
   for (const r of results) {
-    const list = resultsByRacer.get(r.racer_id) ?? [];
-    list.push(r);
-    resultsByRacer.set(r.racer_id, list);
+    resultsByRace.set(`${r.racer_id}|${r.race_id}`, r);
   }
 
-  // One entry per racer, regardless of which car(s) they used — every result
-  // counts towards the same row, and every distinct car they drove is listed.
+  // One entry per racer: `cells` (every result, any car) drives their
+  // combined points/position, while `carRows` splits those same results by
+  // car — in the order each car was first driven — so the standings matrix
+  // can render one display row per car without fragmenting the racer's score.
   const entries = (racers ?? []).map((racer) => {
-    const racerResults = resultsByRacer.get(racer.id) ?? [];
     const cells: Record<string, RaceCell> = {};
-    const carsById = new Map<string, Car>();
-    for (const r of racerResults) {
-      cells[r.race_id] = { rank: r.rank, retired: r.retired, car: r.car ?? null };
-      if (r.car) carsById.set(r.car.id, r.car);
+    const carRows: CarRow[] = [];
+    const carRowByKey = new Map<string, CarRow>();
+
+    for (const race of orderedRaces) {
+      const r = resultsByRace.get(`${racer.id}|${race.id}`);
+      if (!r) continue;
+
+      const cell: RaceCell = { rank: r.rank, retired: r.retired, car: r.car ?? null };
+      cells[race.id] = cell;
+
+      const carKey = r.car_id ?? "none";
+      let carRow = carRowByKey.get(carKey);
+      if (!carRow) {
+        carRow = { car: r.car ?? null, cells: {} };
+        carRowByKey.set(carKey, carRow);
+        carRows.push(carRow);
+      }
+      carRow.cells[race.id] = cell;
     }
-    return { racer, cars: [...carsById.values()], cells };
+
+    if (carRows.length === 0) carRows.push({ car: null, cells: {} });
+
+    return { racer, cells, carRows };
   });
 
   const standings = buildStandings(entries, orderedRaces);
