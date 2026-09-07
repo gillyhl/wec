@@ -229,7 +229,7 @@ export default async function ChampionshipPage({
                   {isFirst && (
                     <td
                       rowSpan={rowSpan}
-                      className="border border-neutral-800 px-1.5 align-top text-neutral-400 sm:px-3"
+                      className="border border-neutral-800 px-1.5 align-middle text-neutral-400 sm:px-3"
                     >
                       {row.position}
                     </td>
@@ -237,7 +237,7 @@ export default async function ChampionshipPage({
                   {isFirst && (
                     <td
                       rowSpan={rowSpan}
-                      className="whitespace-nowrap border border-neutral-800 px-1.5 align-top font-medium sm:px-3"
+                      className="whitespace-nowrap border border-neutral-800 px-1.5 align-middle font-medium sm:px-3"
                     >
                       <Link
                         href={`/drivers/${row.racer.id}`}
@@ -386,7 +386,7 @@ export default async function ChampionshipPage({
                     {isFirst && (
                       <td
                         rowSpan={rowSpan}
-                        className="border border-neutral-800 px-1.5 text-center align-top sm:px-3"
+                        className="border border-neutral-800 px-1.5 text-center align-middle sm:px-3"
                       >
                         <span className="font-semibold">{row.points}</span>
                         {behind > 0 && (
