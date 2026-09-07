@@ -17,8 +17,12 @@ export interface SeasonRace {
 export interface SeasonCarRow {
   car: Car | null;
   // One entry per round of the championship, aligned the same way across
-  // every car row of a season so they line up in the grid.
-  races: SeasonRace[];
+  // every car row of a season so they line up in the grid. null means this
+  // round isn't this car's to show at all (it belongs to another car row) —
+  // rendered as a fully empty cell, not a result. A round with no result in
+  // any car is attributed to whichever car last had one, so gaps between
+  // two races in the same car still show under that car.
+  races: (SeasonRace | null)[];
 }
 
 // A driver's record in one championship (season).
@@ -229,72 +233,97 @@ export async function getRacerHistory(
     let podiums = 0;
     let retirements = 0;
 
+    // Which car "owns" each round: a round with a result belongs to that
+    // result's car; a round with no result carries forward from whichever
+    // car last had one, so a gap between two races in the same car still
+    // shows under that car instead of nothing. Rounds before the driver's
+    // first result this season have no owner — there's no car to carry
+    // forward yet, so they show blank in every row.
+    const ownerByRaceId = new Map<string, string | null>();
+    let currentCarKey: string | null = null;
+    for (const race of data.races) {
+      const cell = row.cells[race.id] ?? null;
+      if (cell) currentCarKey = cell.car?.id ?? "none";
+      ownerByRaceId.set(race.id, currentCarKey);
+    }
+
     // Group this season's races by car, in the order each was first driven —
     // mirrors how getChampionshipData splits a racer's standings row by car.
-    const carGroups = new Map<string, { car: Car | null; cells: Record<string, RaceCell> }>();
+    const carGroups = new Map<
+      string,
+      { car: Car | null; cells: Record<string, RaceCell | null> }
+    >();
     const carKeyOrder: string[] = [];
 
     for (const race of data.races) {
       const cell = row.cells[race.id] ?? null;
-      if (!cell) continue;
+      const ownerKey = ownerByRaceId.get(race.id) ?? null;
 
-      const isWin = cell.rank === 1;
-      const isPodium = cell.rank !== null && cell.rank <= 3;
-      const pts = pointsForRank(cell.rank);
-      if (cell.retired) retirements++;
-      if (isWin) wins++;
-      if (isPodium) podiums++;
+      if (cell) {
+        const isWin = cell.rank === 1;
+        const isPodium = cell.rank !== null && cell.rank <= 3;
+        const pts = pointsForRank(cell.rank);
+        if (cell.retired) retirements++;
+        if (isWin) wins++;
+        if (isPodium) podiums++;
 
-      careerCells.push(cell);
+        careerCells.push(cell);
 
-      // Compare against every other racer who entered this same race.
-      for (const opp of participants) {
-        if (opp.racer.id === racerId) continue;
-        const oppCell = opp.cells[race.id];
-        if (!oppCell) continue;
-        const cmp = compareResults(cell, oppCell);
-        if (cmp === 0) continue;
-        const h = h2hRow(opp.racer);
-        if (cmp > 0) h.ahead++;
-        else h.behind++;
-      }
+        // Compare against every other racer who entered this same race.
+        for (const opp of participants) {
+          if (opp.racer.id === racerId) continue;
+          const oppCell = opp.cells[race.id];
+          if (!oppCell) continue;
+          const cmp = compareResults(cell, oppCell);
+          if (cmp === 0) continue;
+          const h = h2hRow(opp.racer);
+          if (cmp > 0) h.ahead++;
+          else h.behind++;
+        }
 
-      const tr = trackRow(race.track);
-      tr.races++;
-      tr.points += pts;
-      if (cell.retired) tr.retirements++;
-      if (isWin) tr.wins++;
-      if (isPodium) tr.podiums++;
-      if (pts > 0) tr.pointsFinishes++;
-      if (
-        cell.rank !== null &&
-        (tr.bestFinish === null || cell.rank < tr.bestFinish)
-      ) {
-        tr.bestFinish = cell.rank;
-      }
-
-      if (cell.car) {
-        const cr = carRow(cell.car);
-        cr.races++;
-        cr.points += pts;
-        if (cell.retired) cr.retirements++;
-        if (isWin) cr.wins++;
-        if (isPodium) cr.podiums++;
-        if (pts > 0) cr.pointsFinishes++;
+        const tr = trackRow(race.track);
+        tr.races++;
+        tr.points += pts;
+        if (cell.retired) tr.retirements++;
+        if (isWin) tr.wins++;
+        if (isPodium) tr.podiums++;
+        if (pts > 0) tr.pointsFinishes++;
         if (
           cell.rank !== null &&
-          (cr.bestFinish === null || cell.rank < cr.bestFinish)
+          (tr.bestFinish === null || cell.rank < tr.bestFinish)
         ) {
-          cr.bestFinish = cell.rank;
+          tr.bestFinish = cell.rank;
+        }
+
+        if (cell.car) {
+          const cr = carRow(cell.car);
+          cr.races++;
+          cr.points += pts;
+          if (cell.retired) cr.retirements++;
+          if (isWin) cr.wins++;
+          if (isPodium) cr.podiums++;
+          if (pts > 0) cr.pointsFinishes++;
+          if (
+            cell.rank !== null &&
+            (cr.bestFinish === null || cell.rank < cr.bestFinish)
+          ) {
+            cr.bestFinish = cell.rank;
+          }
         }
       }
 
-      const carKey = cell.car?.id ?? "none";
-      let group = carGroups.get(carKey);
+      // No car established yet for this round (no result recorded so far
+      // this season) — leave it unassigned, so every car row shows blank.
+      if (ownerKey === null) continue;
+
+      let group = carGroups.get(ownerKey);
       if (!group) {
-        group = { car: cell.car, cells: {} };
-        carGroups.set(carKey, group);
-        carKeyOrder.push(carKey);
+        // First time this key appears is always a round with an actual
+        // result (ownerKey only changes when `cell` is set), so cell.car is
+        // this group's car.
+        group = { car: cell ? cell.car : null, cells: {} };
+        carGroups.set(ownerKey, group);
+        carKeyOrder.push(ownerKey);
       }
       group.cells[race.id] = cell;
     }
@@ -305,13 +334,16 @@ export async function getRacerHistory(
             const group = carGroups.get(key)!;
             return {
               car: group.car,
-              races: data.races.map((race) => ({
-                race,
-                cell: group.cells[race.id] ?? null,
-              })),
+              // A round not owned by this car (ownerByRaceId points
+              // elsewhere, or nowhere yet) renders as a fully empty cell.
+              races: data.races.map((race) =>
+                ownerByRaceId.get(race.id) === key
+                  ? { race, cell: group.cells[race.id] ?? null }
+                  : null,
+              ),
             };
           })
-        : [{ car: null, races: data.races.map((race) => ({ race, cell: null })) }];
+        : [{ car: null, races: data.races.map(() => null) }];
 
     seasons.push({
       championship: data.championship,
