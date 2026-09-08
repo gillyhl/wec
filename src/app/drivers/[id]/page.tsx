@@ -135,14 +135,16 @@ export default async function DriverPage({
               cell showing where the race was and the driver's finish. */}
           <h2 className="mt-10 text-lg font-semibold">Seasons</h2>
           <div className="mt-4 flex rounded-lg border border-neutral-800">
-            {/* Frozen left: season name + car */}
-            <table className="shrink-0 border-collapse text-sm">
+            {/* Frozen left: season name + car. Capped and fixed-layout on
+                desktop so long championship/car names wrap instead of eating
+                into the round columns' share of the row. */}
+            <table className="shrink-0 border-collapse text-sm sm:table-fixed">
               <thead className="bg-neutral-900 text-neutral-400">
                 <tr className="h-16">
-                  <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
+                  <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-44 sm:px-2">
                     Season
                   </th>
-                  <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
+                  <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-32 sm:px-2">
                     Car
                   </th>
                 </tr>
@@ -153,7 +155,7 @@ export default async function DriverPage({
                     {isFirst && (
                       <td
                         rowSpan={rowSpan}
-                        className="whitespace-nowrap border border-neutral-800 px-1.5 align-middle sm:px-3"
+                        className="whitespace-nowrap border border-neutral-800 px-1.5 align-middle sm:whitespace-normal sm:break-words sm:px-2"
                       >
                         <Link
                           href={`/championships/${season.championship.id}`}
@@ -166,7 +168,7 @@ export default async function DriverPage({
                         </span>
                       </td>
                     )}
-                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
+                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:whitespace-normal sm:break-words sm:px-2">
                       {carRow.car?.name ?? "–"}
                     </td>
                   </tr>
@@ -183,7 +185,7 @@ export default async function DriverPage({
                     {rounds.map((round) => (
                       <th
                         key={round}
-                        className="w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-11 sm:px-1.5"
+                        className="w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-10"
                       >
                         R{round}
                       </th>
@@ -248,13 +250,13 @@ export default async function DriverPage({
 
             {/* Frozen right: season points + finishing position. Pulled 1px left
                 so the seam onto the rounds table stays a single border. */}
-            <table className="-ml-px shrink-0 border-collapse text-sm">
+            <table className="-ml-px shrink-0 border-collapse text-sm sm:table-fixed">
               <thead className="bg-neutral-900 text-neutral-400">
                 <tr className="h-16">
-                  <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:px-3">
+                  <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:w-16 sm:px-2">
                     Points
                   </th>
-                  <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:px-3">
+                  <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:w-14 sm:px-2">
                     Pos.
                   </th>
                 </tr>
@@ -273,7 +275,7 @@ export default async function DriverPage({
                       {isFirst && (
                         <td
                           rowSpan={rowSpan}
-                          className={`border border-neutral-800 px-1.5 text-center align-middle font-semibold sm:px-3 ${text}`}
+                          className={`border border-neutral-800 px-1.5 text-center align-middle font-semibold sm:px-2 ${text}`}
                           style={bg}
                         >
                           {season.points}
@@ -282,7 +284,7 @@ export default async function DriverPage({
                       {isFirst && (
                         <td
                           rowSpan={rowSpan}
-                          className={`whitespace-nowrap border border-neutral-800 px-1.5 text-center align-middle font-semibold sm:px-3 ${text}`}
+                          className={`whitespace-nowrap border border-neutral-800 px-1.5 text-center align-middle font-semibold sm:px-2 ${text}`}
                           style={bg}
                         >
                           {ordinal(season.position)}

@@ -208,24 +208,25 @@ export default async function ChampionshipPage({
         </div>
       ) : (
         <div className="mt-6 flex items-start rounded-lg border border-neutral-800">
-          {/* Frozen left: position + racer + car. Fixed layout on mobile so
+          {/* Frozen left: position + racer + car. Fixed layout at every size so
               the Racer/Car widths below actually cap the columns instead of
-              growing to fit the longest name — table-auto would otherwise
-              let this shrink-0 table expand past the viewport. */}
-          <table className="shrink-0 table-fixed border-collapse text-xs sm:table-auto sm:text-sm">
+              growing to fit the longest name — table-auto would otherwise let
+              this shrink-0 table expand past the viewport on mobile, and eat
+              into the race columns' share of the row on desktop. */}
+          <table className="shrink-0 table-fixed border-collapse text-xs sm:text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
               {/* Matches the taller race-column header (round + flag + track
                   code + edit link) so row lines stay aligned with the
                   scrollable table below — these are separate <table>
                   elements, so their row heights aren't otherwise tied. */}
               <tr className="h-20">
-                <th className="w-7 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-auto sm:px-3">
+                <th className="w-7 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-9 sm:px-2">
                   #
                 </th>
-                <th className="w-16 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-auto sm:px-3">
+                <th className="w-16 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-40 sm:px-2">
                   Racer
                 </th>
-                <th className="w-16 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-auto sm:px-3">
+                <th className="w-16 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-32 sm:px-2">
                   Car
                 </th>
               </tr>
@@ -236,7 +237,7 @@ export default async function ChampionshipPage({
                   {isFirst && (
                     <td
                       rowSpan={rowSpan}
-                      className="border border-neutral-800 px-1.5 align-middle text-neutral-400 sm:px-3"
+                      className="border border-neutral-800 px-1.5 align-middle text-neutral-400 sm:px-2"
                     >
                       {row.position}
                     </td>
@@ -244,7 +245,7 @@ export default async function ChampionshipPage({
                   {isFirst && (
                     <td
                       rowSpan={rowSpan}
-                      className="w-16 break-words border border-neutral-800 px-1.5 align-middle font-medium sm:w-auto sm:whitespace-nowrap sm:px-3"
+                      className="w-16 break-words border border-neutral-800 px-1.5 align-middle font-medium sm:w-40 sm:px-2"
                     >
                       <Link
                         href={`/drivers/${row.racer.id}`}
@@ -264,7 +265,7 @@ export default async function ChampionshipPage({
                       </Link>
                     </td>
                   )}
-                  <td className="w-16 break-words border border-neutral-800 px-1.5 text-neutral-400 sm:w-auto sm:whitespace-nowrap sm:px-3">
+                  <td className="w-16 break-words border border-neutral-800 px-1.5 text-neutral-400 sm:w-32 sm:px-2">
                     {carRow.car?.name ?? "–"}
                   </td>
                 </tr>
@@ -274,7 +275,7 @@ export default async function ChampionshipPage({
               <tr className="h-8">
                 <td
                   colSpan={3}
-                  className="border border-neutral-800 px-1.5 text-[10px] font-medium text-neutral-500 sm:px-3"
+                  className="border border-neutral-800 px-1.5 text-[10px] font-medium text-neutral-500 sm:px-2"
                 >
                   AI difficulty
                 </td>
@@ -291,7 +292,7 @@ export default async function ChampionshipPage({
                   {races.map((race) => (
                     <th
                       key={race.id}
-                      className="w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-11 sm:px-1.5"
+                      className="w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-10"
                       title={race.track.name}
                     >
                       <div className="flex flex-col items-center leading-tight">
@@ -346,7 +347,7 @@ export default async function ChampionshipPage({
                           return (
                             <td
                               key={race.id}
-                              className="border border-neutral-800 px-1 text-center text-neutral-300 sm:px-1.5"
+                              className="border border-neutral-800 px-1 text-center text-neutral-300"
                             >
                               –
                             </td>
@@ -355,7 +356,7 @@ export default async function ChampionshipPage({
                         return (
                           <td
                             key={race.id}
-                            className="border border-neutral-800 px-1 text-center font-bold text-neutral-900 sm:px-1.5"
+                            className="border border-neutral-800 px-1 text-center font-bold text-neutral-900"
                             style={{
                               backgroundColor: resultColor(
                                 cell.rank,
@@ -389,7 +390,7 @@ export default async function ChampionshipPage({
                   {races.map((race) => (
                     <td
                       key={race.id}
-                      className="border border-neutral-800 px-1 text-center text-[10px] text-neutral-400 sm:px-1.5"
+                      className="border border-neutral-800 px-1 text-center text-[10px] text-neutral-400"
                     >
                       {race.ai_difficulty ?? "–"}
                     </td>
@@ -402,10 +403,10 @@ export default async function ChampionshipPage({
 
           {/* Frozen right: points (desktop only — see the scrollable table
               above for the mobile equivalent). */}
-          <table className="hidden shrink-0 border-collapse text-sm sm:table">
+          <table className="hidden shrink-0 table-fixed border-collapse text-sm sm:table">
             <thead className="bg-neutral-900 text-neutral-400">
               <tr className="h-20">
-                <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:px-3">
+                <th className="w-16 border border-neutral-800 px-2 align-bottom text-center font-medium">
                   Points
                 </th>
               </tr>
@@ -418,7 +419,7 @@ export default async function ChampionshipPage({
                     {isFirst && (
                       <td
                         rowSpan={rowSpan}
-                        className="border border-neutral-800 px-1.5 text-center align-middle sm:px-3"
+                        className="border border-neutral-800 px-2 text-center align-middle"
                       >
                         <span className="font-semibold">{row.points}</span>
                         {behind > 0 && (
@@ -434,7 +435,7 @@ export default async function ChampionshipPage({
             </tbody>
             <tfoot>
               <tr className="h-8">
-                <td className="border border-neutral-800 px-1.5 sm:px-3" />
+                <td className="border border-neutral-800 px-2" />
               </tr>
             </tfoot>
           </table>
