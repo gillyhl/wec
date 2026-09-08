@@ -209,7 +209,7 @@ export default async function ChampionshipPage({
       ) : (
         <div className="mt-6 flex items-start rounded-lg border border-neutral-800">
           {/* Frozen left: position + racer + car */}
-          <table className="shrink-0 border-collapse text-sm">
+          <table className="shrink-0 border-collapse text-xs sm:text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
               {/* Matches the taller race-column header (round + flag + track
                   code + edit link) so row lines stay aligned with the
@@ -279,9 +279,10 @@ export default async function ChampionshipPage({
             </tfoot>
           </table>
 
-          {/* Scrollable middle: race results */}
+          {/* Scrollable middle: race results (+ points on mobile, where the
+              points column isn't frozen so results get more room). */}
           <div className="flex-1 overflow-x-auto">
-            <table className="w-full table-fixed border-collapse text-sm">
+            <table className="w-full table-fixed border-collapse text-xs sm:text-sm">
               <thead className="bg-neutral-900 text-neutral-400">
                 <tr className="h-20">
                   {races.map((race) => (
@@ -323,40 +324,62 @@ export default async function ChampionshipPage({
                       </div>
                     </th>
                   ))}
+                  {/* Points joins the scrollable table on mobile instead of
+                      staying frozen, so the frozen columns don't crowd out
+                      the results. */}
+                  <th className="w-12 border border-neutral-800 px-1 align-bottom text-center font-medium sm:hidden">
+                    Pts
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {displayRows.map(({ carRow, key }) => (
-                  <tr key={key} className="h-12">
-                    {races.map((race) => {
-                      const cell = carRow.cells[race.id];
-                      if (!cell) {
+                {displayRows.map(({ row, carRow, isFirst, rowSpan, key }) => {
+                  const behind = leaderPoints - row.points;
+                  return (
+                    <tr key={key} className="h-12">
+                      {races.map((race) => {
+                        const cell = carRow.cells[race.id];
+                        if (!cell) {
+                          return (
+                            <td
+                              key={race.id}
+                              className="border border-neutral-800 px-1 text-center text-neutral-300 sm:px-1.5"
+                            >
+                              –
+                            </td>
+                          );
+                        }
                         return (
                           <td
                             key={race.id}
-                            className="border border-neutral-800 px-1 text-center text-neutral-300 sm:px-1.5"
+                            className="border border-neutral-800 px-1 text-center font-bold text-neutral-900 sm:px-1.5"
+                            style={{
+                              backgroundColor: resultColor(
+                                cell.rank,
+                                cell.retired,
+                              ),
+                            }}
                           >
-                            –
+                            {cell.retired ? "RET" : cell.rank}
                           </td>
                         );
-                      }
-                      return (
+                      })}
+                      {isFirst && (
                         <td
-                          key={race.id}
-                          className="border border-neutral-800 px-1 text-center font-bold text-neutral-900 sm:px-1.5"
-                          style={{
-                            backgroundColor: resultColor(
-                              cell.rank,
-                              cell.retired,
-                            ),
-                          }}
+                          rowSpan={rowSpan}
+                          className="border border-neutral-800 px-1 text-center align-middle sm:hidden"
                         >
-                          {cell.retired ? "RET" : cell.rank}
+                          <span className="font-semibold">{row.points}</span>
+                          {behind > 0 && (
+                            <span className="block text-[10px] font-normal text-neutral-500">
+                              −{behind}
+                            </span>
+                          )}
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="h-8">
@@ -368,13 +391,15 @@ export default async function ChampionshipPage({
                       {race.ai_difficulty ?? "–"}
                     </td>
                   ))}
+                  <td className="border border-neutral-800 px-1 sm:hidden" />
                 </tr>
               </tfoot>
             </table>
           </div>
 
-          {/* Frozen right: points */}
-          <table className="shrink-0 border-collapse text-sm">
+          {/* Frozen right: points (desktop only — see the scrollable table
+              above for the mobile equivalent). */}
+          <table className="hidden shrink-0 border-collapse text-sm sm:table">
             <thead className="bg-neutral-900 text-neutral-400">
               <tr className="h-20">
                 <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:px-3">
