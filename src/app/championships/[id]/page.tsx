@@ -208,28 +208,31 @@ export default async function ChampionshipPage({
         </div>
       ) : (
         <div className="mt-6 flex items-start rounded-lg border border-neutral-800">
-          {/* Frozen left: position + racer + car */}
-          <table className="shrink-0 border-collapse text-xs sm:text-sm">
+          {/* Frozen left: position + racer + car. Fixed layout on mobile so
+              the Racer/Car widths below actually cap the columns instead of
+              growing to fit the longest name — table-auto would otherwise
+              let this shrink-0 table expand past the viewport. */}
+          <table className="shrink-0 table-fixed border-collapse text-xs sm:table-auto sm:text-sm">
             <thead className="bg-neutral-900 text-neutral-400">
               {/* Matches the taller race-column header (round + flag + track
                   code + edit link) so row lines stay aligned with the
                   scrollable table below — these are separate <table>
                   elements, so their row heights aren't otherwise tied. */}
               <tr className="h-20">
-                <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
+                <th className="w-7 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-auto sm:px-3">
                   #
                 </th>
-                <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
+                <th className="w-16 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-auto sm:px-3">
                   Racer
                 </th>
-                <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:px-3">
+                <th className="w-16 border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-auto sm:px-3">
                   Car
                 </th>
               </tr>
             </thead>
             <tbody>
               {displayRows.map(({ row, carRow, isFirst, rowSpan, key }) => (
-                <tr key={key} className="h-12">
+                <tr key={key} className="h-14 sm:h-12">
                   {isFirst && (
                     <td
                       rowSpan={rowSpan}
@@ -241,7 +244,7 @@ export default async function ChampionshipPage({
                   {isFirst && (
                     <td
                       rowSpan={rowSpan}
-                      className="whitespace-nowrap border border-neutral-800 px-1.5 align-middle font-medium sm:px-3"
+                      className="w-16 break-words border border-neutral-800 px-1.5 align-middle font-medium sm:w-auto sm:whitespace-nowrap sm:px-3"
                     >
                       <Link
                         href={`/drivers/${row.racer.id}`}
@@ -261,7 +264,7 @@ export default async function ChampionshipPage({
                       </Link>
                     </td>
                   )}
-                  <td className="whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:px-3">
+                  <td className="w-16 break-words border border-neutral-800 px-1.5 text-neutral-400 sm:w-auto sm:whitespace-nowrap sm:px-3">
                     {carRow.car?.name ?? "–"}
                   </td>
                 </tr>
@@ -336,7 +339,7 @@ export default async function ChampionshipPage({
                 {displayRows.map(({ row, carRow, isFirst, rowSpan, key }) => {
                   const behind = leaderPoints - row.points;
                   return (
-                    <tr key={key} className="h-12">
+                    <tr key={key} className="h-14 sm:h-12">
                       {races.map((race) => {
                         const cell = carRow.cells[race.id];
                         if (!cell) {
