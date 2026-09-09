@@ -12,8 +12,6 @@ import type { RacingSeries, Track } from "@/lib/types";
 // most MAX_PER_COUNTRY tracks may come from the same country; longer
 // schedules drop that limit (there aren't enough countries to honour it).
 const DEFAULT_RACE_COUNT = 12;
-const MAX_PER_COUNTRY = 3;
-const COUNTRY_CAP_THRESHOLD = 20;
 
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -28,25 +26,11 @@ function shuffle<T>(items: T[]): T[] {
 // COUNTRY_CAP_THRESHOLD or fewer races allow at most MAX_PER_COUNTRY tracks
 // from the same country; longer ones lift that cap.
 function distinctSchedule(tracks: Track[], raceCount: number): Track[] {
-  const capPerCountry = raceCount <= COUNTRY_CAP_THRESHOLD;
   const selected: Track[] = [];
-  const perCountry: Record<string, number> = {};
 
   for (const track of shuffle(tracks)) {
     if (selected.length >= raceCount) break;
-    if (capPerCountry) {
-      const count = perCountry[track.country_code] ?? 0;
-      if (count >= MAX_PER_COUNTRY) continue;
-      perCountry[track.country_code] = count + 1;
-    }
     selected.push(track);
-  }
-
-  if (selected.length < raceCount) {
-    throw new Error(
-      `Could not build a ${raceCount}-race schedule with at most ` +
-        `${MAX_PER_COUNTRY} tracks per country from the selected tracks.`,
-    );
   }
 
   // The pool was already shuffled, so selection order is itself random.
