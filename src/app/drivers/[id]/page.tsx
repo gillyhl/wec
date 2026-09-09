@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import FlagIcon from "@/components/FlagIcon";
-import { resultColor } from "@/lib/championship";
-import { getRacerHistory, ordinal } from "@/lib/racer";
+import DriverSeasons from "@/components/DriverSeasons";
+import { getRacerHistory } from "@/lib/racer";
 import { RACING_SERIES_LABELS } from "@/lib/types";
 import type { RacerSeason } from "@/lib/racer";
 
@@ -47,30 +47,6 @@ export default async function DriverPage({
   ];
 
   const career = careerTotals(seasons);
-
-  // Seasons vary in length, so lay every season's rounds side by side up to the
-  // longest season; shorter seasons leave the trailing round columns blank.
-  // Every car row within a season covers the same rounds, so the first is
-  // representative of the whole season's length.
-  const maxRounds = seasons.reduce(
-    (m, s) => Math.max(m, s.carRows[0]?.races.length ?? 0),
-    0,
-  );
-  const rounds = Array.from({ length: maxRounds }, (_, i) => i + 1);
-
-  // One display row per (season, car) — a season with more than one car used
-  // gets multiple rows here, so the grid can show which car ran which race,
-  // while Season/Points/Position (only rendered on the first row, spanning
-  // the rest) reflect the whole season, not a single car.
-  const seasonDisplayRows = seasons.flatMap((season) =>
-    season.carRows.map((carRow, i) => ({
-      season,
-      carRow,
-      isFirst: i === 0,
-      rowSpan: season.carRows.length,
-      key: `${season.championship.id}-${i}`,
-    })),
-  );
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10">
@@ -131,176 +107,7 @@ export default async function DriverPage({
             </table>
           </div>
 
-          {/* Season-by-season racing record: one row per season, each round's
-              cell showing where the race was and the driver's finish. */}
-          <h2 className="mt-10 text-lg font-semibold">Seasons</h2>
-          {/* items-start matters: the middle column's horizontal scrollbar makes
-              it taller than the frozen tables wherever scrollbars take up space,
-              and a stretched <table> hands the surplus to its rows — which
-              would push each frozen row a few pixels below its scrollable
-              counterpart, drifting further with every row. */}
-          <div className="mt-4 flex items-start rounded-lg border border-neutral-800">
-            {/* Frozen left: season name + car. Capped and fixed-layout on
-                desktop so long championship/car names wrap instead of eating
-                into the round columns' share of the row. */}
-            <table className="shrink-0 border-collapse text-sm sm:table-fixed">
-              <thead className="bg-neutral-900 text-neutral-400">
-                <tr className="h-16">
-                  <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-44 sm:px-2">
-                    Season
-                  </th>
-                  <th className="border border-neutral-800 px-1.5 align-bottom text-left font-medium sm:w-32 sm:px-2">
-                    Car
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {seasonDisplayRows.map(({ season, carRow, isFirst, rowSpan, key }) => (
-                  <tr key={key} className="h-14">
-                    {isFirst && (
-                      <td
-                        rowSpan={rowSpan}
-                        className="whitespace-nowrap border border-neutral-800 px-1.5 align-middle sm:whitespace-normal sm:break-words sm:px-2"
-                      >
-                        <Link
-                          href={`/championships/${season.championship.id}`}
-                          className="font-medium hover:underline"
-                        >
-                          {season.championship.name}
-                        </Link>
-                        <span className="block text-xs text-neutral-500">
-                          {RACING_SERIES_LABELS[season.championship.series]}
-                        </span>
-                      </td>
-                    )}
-                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 text-neutral-400 sm:whitespace-normal sm:break-words sm:px-2">
-                      {carRow.car?.name ?? "–"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Scrollable middle: one column per round. Pulled 1px left so its
-                border collapses onto the season table's rather than doubling. */}
-            <div className="-ml-px flex-1 overflow-x-auto">
-              <table className="w-full table-fixed border-collapse text-sm">
-                <thead className="bg-neutral-900 text-neutral-400">
-                  <tr className="h-16">
-                    {rounds.map((round) => (
-                      <th
-                        key={round}
-                        className="w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-10"
-                      >
-                        R{round}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {seasonDisplayRows.map(({ carRow, key }) => (
-                    <tr key={key} className="h-14">
-                      {rounds.map((round) => {
-                        const entry = carRow.races[round - 1];
-                        if (!entry) {
-                          return (
-                            <td
-                              key={round}
-                              className="border border-neutral-800 bg-neutral-950"
-                            />
-                          );
-                        }
-                        const { race, cell } = entry;
-                        return (
-                          <td
-                            key={round}
-                            className="border border-neutral-800 px-1 text-center sm:px-1.5"
-                            style={
-                              cell
-                                ? {
-                                    backgroundColor: resultColor(
-                                      cell.rank,
-                                      cell.retired,
-                                    ),
-                                  }
-                                : undefined
-                            }
-                            title={
-                              cell?.car
-                                ? `${race.track.name} — ${cell.car.name}`
-                                : race.track.name
-                            }
-                          >
-                            <div
-                              className={`flex flex-col items-center leading-tight ${
-                                cell ? "text-neutral-900" : "text-neutral-400"
-                              }`}
-                            >
-                              <FlagIcon countryCode={race.track.country_code} />
-                              <span className="text-[10px]">
-                                {race.track.short_code}
-                              </span>
-                              <span className="font-bold">
-                                {cell ? (cell.retired ? "RET" : cell.rank) : "–"}
-                              </span>
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Frozen right: season points + finishing position. Pulled 1px left
-                so the seam onto the rounds table stays a single border. */}
-            <table className="-ml-px shrink-0 border-collapse text-sm sm:table-fixed">
-              <thead className="bg-neutral-900 text-neutral-400">
-                <tr className="h-16">
-                  <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:w-16 sm:px-2">
-                    Points
-                  </th>
-                  <th className="border border-neutral-800 px-1.5 align-bottom text-center font-medium sm:w-14 sm:px-2">
-                    Pos.
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {seasonDisplayRows.map(({ season, isFirst, rowSpan, key }) => {
-                  // A podium championship finish tints both summary cells with
-                  // the same gold/silver/bronze used for race results.
-                  const podium = season.position <= 3;
-                  const bg = podium
-                    ? { backgroundColor: resultColor(season.position, false) }
-                    : undefined;
-                  const text = podium ? "text-neutral-900" : "";
-                  return (
-                    <tr key={key} className="h-14">
-                      {isFirst && (
-                        <td
-                          rowSpan={rowSpan}
-                          className={`border border-neutral-800 px-1.5 text-center align-middle font-semibold sm:px-2 ${text}`}
-                          style={bg}
-                        >
-                          {season.points}
-                        </td>
-                      )}
-                      {isFirst && (
-                        <td
-                          rowSpan={rowSpan}
-                          className={`whitespace-nowrap border border-neutral-800 px-1.5 text-center align-middle font-semibold sm:px-2 ${text}`}
-                          style={bg}
-                        >
-                          {ordinal(season.position)}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DriverSeasons seasons={seasons} />
 
           {/* Per-track record, aggregated across every season. */}
           <h2 className="mt-10 text-lg font-semibold">Tracks</h2>

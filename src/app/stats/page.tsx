@@ -1,6 +1,7 @@
 import Link from "next/link";
 import FlagIcon from "@/components/FlagIcon";
 import { getStatsData } from "@/lib/stats";
+import { FAVOURITE_LABEL, FAVOURITE_TINT } from "@/lib/tracks";
 import { RACING_SERIES_LABELS } from "@/lib/types";
 import type { Racer, Track } from "@/lib/types";
 
@@ -26,18 +27,24 @@ function RacerName({ racer }: { racer: Racer }) {
   );
 }
 
-// Track flag + name (short code on mobile) with its game labelled beneath,
-// mirroring the per-track tables.
-function TrackName({ track }: { track: Track }) {
+// A row's track cell: flag + name (short code on mobile) with its game
+// labelled beneath, washed gold when the track is a favourite.
+function TrackCell({ track }: { track: Track }) {
   return (
-    <>
+    <td
+      className={`whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3 ${
+        track.favourite ? FAVOURITE_TINT : ""
+      }`}
+    >
       <FlagIcon countryCode={track.country_code} className="mr-1.5 sm:mr-2" />
-      <span className="sm:hidden">{track.short_code}</span>
-      <span className="hidden sm:inline">{track.name}</span>
+      <span className={track.favourite ? FAVOURITE_LABEL : ""}>
+        <span className="sm:hidden">{track.short_code}</span>
+        <span className="hidden sm:inline">{track.name}</span>
+      </span>
       <span className="block text-xs font-normal text-neutral-500">
         {RACING_SERIES_LABELS[track.source]}
       </span>
-    </>
+    </td>
   );
 }
 
@@ -135,9 +142,7 @@ export default async function StatsPage() {
               <tbody>
                 {trackSpecialists.map((row) => (
                   <tr key={row.track.id} className="h-12">
-                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
-                      <TrackName track={row.track} />
-                    </td>
+                    <TrackCell track={row.track} />
                     <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
                       <RacerName racer={row.racer} />
                     </td>
@@ -182,9 +187,7 @@ export default async function StatsPage() {
                     <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
                       <RacerName racer={row.racer} />
                     </td>
-                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
-                      <TrackName track={row.track} />
-                    </td>
+                    <TrackCell track={row.track} />
                     <td className={numCell}>{row.races}</td>
                     <td className={numCell}>{row.bestFinish ?? "—"}</td>
                     <td className={numCell}>{row.wins}</td>
@@ -225,17 +228,7 @@ export default async function StatsPage() {
               <tbody>
                 {s.rows.map((row) => (
                   <tr key={`${row.track.id}-${row.racer.id}`} className="h-12">
-                    <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
-                      <FlagIcon
-                        countryCode={row.track.country_code}
-                        className="mr-1.5 sm:mr-2"
-                      />
-                      <span className="sm:hidden">{row.track.short_code}</span>
-                      <span className="hidden sm:inline">{row.track.name}</span>
-                      <span className="block text-xs font-normal text-neutral-500">
-                        {RACING_SERIES_LABELS[row.track.source]}
-                      </span>
-                    </td>
+                    <TrackCell track={row.track} />
                     <td className="whitespace-nowrap border border-neutral-800 px-1.5 font-medium sm:px-3">
                       <RacerName racer={row.racer} />
                     </td>

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { POINTS_BY_RANK, pointsForRank } from "@/lib/results";
 import type {
   Car,
   Championship,
@@ -44,37 +45,6 @@ export interface StandingsRow {
   // driven. Always at least one entry (car: null, empty cells) for a racer
   // with no results yet, so they still render a row.
   carRows: CarRow[];
-}
-
-// Standard WEC/F1-style points for the top 10 finishers. Mirrors the
-// points_for_rank SQL function so the UI can compute per-race points.
-const POINTS_BY_RANK: Record<number, number> = {
-  1: 25,
-  2: 18,
-  3: 15,
-  4: 12,
-  5: 10,
-  6: 8,
-  7: 6,
-  8: 4,
-  9: 2,
-  10: 1,
-};
-
-export function pointsForRank(rank: number | null): number {
-  if (rank === null) return 0;
-  return POINTS_BY_RANK[rank] ?? 0;
-}
-
-// Background colour for a race result cell, based on finishing position.
-// Shared by the championship standings matrix and the driver history page.
-export function resultColor(rank: number | null, retired: boolean): string {
-  if (retired) return "#EFCFFF";
-  if (rank === 1) return "#FFFFBF";
-  if (rank === 2) return "#DFDFDF";
-  if (rank === 3) return "#FFDF9F";
-  if (rank !== null && rank >= 4 && rank <= 10) return "#DFFFDF";
-  return "#CFCFFF";
 }
 
 // Builds a countback histogram: counts[i] is how many times the racer

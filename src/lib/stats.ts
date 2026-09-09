@@ -1,9 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import {
-  championshipWinner,
-  getChampionshipData,
-  pointsForRank,
-} from "@/lib/championship";
+import { championshipWinner, getChampionshipData } from "@/lib/championship";
+import { pointsForRank } from "@/lib/results";
 import type { Championship, Racer, RacingSeries, Track } from "@/lib/types";
 
 // A racer's combined stats across every championship.
