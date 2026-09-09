@@ -31,6 +31,14 @@ VALUES
     false
   ),
   (
+    '0842f363-ceae-413d-9f99-ba1b3530aead',
+    'Motorsport Arena Oschersleben',
+    'OSC',
+    'DE',
+    'project_cars_2',
+    false
+  ),
+  (
     '187818c6-565a-41dd-8a8d-3bcb969c60e6',
     'Road America',
     'RAM',
@@ -119,6 +127,22 @@ VALUES
     false
   ),
   (
+    '3b3a79b7-6209-46f8-b013-378db36a7481',
+    'Dubai Autodrome',
+    'DUB',
+    'AE',
+    'project_cars_2',
+    false
+  ),
+  (
+    '3e03f86b-302c-451e-85b2-3dc277062805',
+    'Snetterton',
+    'SNE',
+    'GB',
+    'project_cars_2',
+    false
+  ),
+  (
     '4a948196-1282-4c6e-b48f-a9de7feec139',
     'Circuit des 24 Heures du Mans',
     'LEM',
@@ -183,10 +207,26 @@ VALUES
     false
   ),
   (
+    '6deae8c7-e5e1-45a8-9486-5f707d793bd8',
+    'Watkins Glen',
+    'WAT',
+    'US',
+    'project_cars_2',
+    false
+  ),
+  (
     '6f26560b-6187-4bfb-b342-c0882ebb8eb5',
     'Autodromo Enzo e Dino Ferrari',
     'IMO',
     'IT',
+    'project_cars_2',
+    false
+  ),
+  (
+    '6f9804f8-741e-44e8-b1e0-4682b0c85deb',
+    'Sportsland SUGO',
+    'SUG',
+    'JP',
     'project_cars_2',
     false
   ),
@@ -227,6 +267,14 @@ VALUES
     'Donington Park',
     'DON',
     'GB',
+    'project_cars_2',
+    false
+  ),
+  (
+    '79df8d64-efc8-4b06-b449-8d9208f40a1e',
+    'Long Beach',
+    'LNG',
+    'US',
     'project_cars_2',
     false
   ),
@@ -455,6 +503,22 @@ VALUES
     false
   ),
   (
+    'bd50491b-3e8e-47ef-ab8f-7f7748b8b0b8',
+    'Zhuhai International',
+    'ZHU',
+    'CN',
+    'project_cars_2',
+    false
+  ),
+  (
+    'bdf57dd5-ffe2-434d-93ed-bb872c0f214f',
+    'Road America',
+    'RAM',
+    'US',
+    'project_cars_2',
+    false
+  ),
+  (
     'bea4cbae-d6f0-4551-8a4c-6933515f28ae',
     'Nürburgring Grand-Prix-Strecke',
     'NUR',
@@ -484,6 +548,14 @@ VALUES
     'MAN',
     'FR',
     'iracing',
+    false
+  ),
+  (
+    'cff698f3-5db6-421c-b1f8-fecfda62779f',
+    'Ruapuna Park',
+    'RUA',
+    'NZ',
+    'project_cars_2',
     false
   ),
   (
