@@ -38,6 +38,10 @@ function runs(n: number) {
   return n === 1 ? "once" : `${n} times`;
 }
 
+function favouriteIds(tracks: Track[]) {
+  return tracks.filter((t) => t.favourite).map((t) => t.id);
+}
+
 // Describes the schedule the current settings would produce, mirroring
 // buildSchedule in ../actions.ts. Returns null when there is nothing to
 // describe yet, or an `error` when the settings cannot be satisfied.
@@ -136,9 +140,11 @@ export default function NewChampionshipForm({
     iracing: new Set(iracingTracks.map((t) => t.id)),
   });
   // Tracks guaranteed a place in the schedule. Always a subset of `selected`.
+  // Favourited tracks start starred so the common championship needs no
+  // clicking; they are ordinary stars once here, and can be cleared.
   const [mandatory, setMandatory] = useState<Record<RacingSeries, Set<string>>>({
-    project_cars_2: new Set(),
-    iracing: new Set(),
+    project_cars_2: new Set(favouriteIds(pc2Tracks)),
+    iracing: new Set(favouriteIds(iracingTracks)),
   });
   const [raceCount, setRaceCount] = useState(String(DEFAULT_RACE_COUNT));
 
@@ -317,7 +323,8 @@ export default function NewChampionshipForm({
 
           <p className="mt-1 text-xs text-neutral-500">
             Tick a track to put it in the pool; star it to guarantee it a round
-            when the schedule cannot fit the pool evenly.
+            when the schedule cannot fit the pool evenly. Favourite tracks come
+            pre-starred — unstar any this season does not need.
           </p>
 
           {tracks.length === 0 ? (

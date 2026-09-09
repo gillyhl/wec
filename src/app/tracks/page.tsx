@@ -3,7 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import { RACING_SERIES_LABELS, type RacingSeries, type Track } from "@/lib/types";
-import { archiveTrack, unarchiveTrack } from "./actions";
+import {
+  archiveTrack,
+  favouriteTrack,
+  unarchiveTrack,
+  unfavouriteTrack,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +20,7 @@ export default async function TracksPage() {
   const [{ data: tracks, error }, { isAdmin }] = await Promise.all([
     supabase
       .from("tracks")
-      .select("id, name, short_code, country_code, source, archived")
+      .select("id, name, short_code, country_code, source, archived, favourite")
       .order("name")
       .returns<Track[]>(),
     getAuth(),
@@ -41,7 +46,9 @@ export default async function TracksPage() {
             Every track, grouped by the racing game used. A championship&apos;s
             race order is always drawn from its own game&apos;s pool of
             non-archived tracks — archiving a track keeps its past results
-            intact but stops it being picked for new championships.
+            intact but stops it being picked for new championships. Starring a
+            track makes it a favourite, so a new championship starts with it
+            marked must-include.
           </p>
         </div>
         {isAdmin && (
@@ -101,6 +108,44 @@ export default async function TracksPage() {
                         )}
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
+                        {isAdmin ? (
+                          <form
+                            action={
+                              track.favourite ? unfavouriteTrack : favouriteTrack
+                            }
+                          >
+                            <input
+                              type="hidden"
+                              name="track_id"
+                              value={track.id}
+                            />
+                            <button
+                              type="submit"
+                              aria-label={`${track.favourite ? "Unmark" : "Mark"} ${track.name} as a favourite`}
+                              title={
+                                track.favourite
+                                  ? "A favourite — click to unmark"
+                                  : "Start new championships with this track marked must-include"
+                              }
+                              className={`rounded px-1 text-sm leading-none ${
+                                track.favourite
+                                  ? "text-amber-400 hover:text-amber-300"
+                                  : "text-neutral-600 hover:text-neutral-300"
+                              }`}
+                            >
+                              {track.favourite ? "★" : "☆"}
+                            </button>
+                          </form>
+                        ) : (
+                          track.favourite && (
+                            <span
+                              title="A favourite"
+                              className="text-sm leading-none text-amber-400"
+                            >
+                              ★
+                            </span>
+                          )
+                        )}
                         <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs font-medium text-neutral-400">
                           {track.short_code}
                         </span>

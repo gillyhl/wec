@@ -139,7 +139,7 @@ export async function createChampionship(formData: FormData) {
 
   const { data: tracks, error: tracksError } = await supabase
     .from("tracks")
-    .select("id, name, short_code, country_code, source, archived")
+    .select("id, name, short_code, country_code, source, archived, favourite")
     .eq("source", series)
     .eq("archived", false)
     .returns<Track[]>();

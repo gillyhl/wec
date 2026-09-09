@@ -14,7 +14,7 @@ export default async function NewChampionshipPage() {
   const supabase = await createClient();
   const { data: tracks, error } = await supabase
     .from("tracks")
-    .select("id, name, short_code, country_code, source, archived")
+    .select("id, name, short_code, country_code, source, archived, favourite")
     .eq("archived", false)
     .order("name")
     .returns<Track[]>();
@@ -41,7 +41,8 @@ export default async function NewChampionshipPage() {
         some more than others. Star a track to keep it out of that draw: every
         starred track is guaranteed its round, and repeats before any other
         track does — if that leaves too few rounds to go round, unstarred
-        tracks are dropped from the season to pay for it.
+        tracks are dropped from the season to pay for it. Tracks favourited on
+        the tracks page start out starred here; unstar any you do not want.
       </p>
 
       {error && (

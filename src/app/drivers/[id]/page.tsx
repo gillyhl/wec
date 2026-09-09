@@ -134,7 +134,12 @@ export default async function DriverPage({
           {/* Season-by-season racing record: one row per season, each round's
               cell showing where the race was and the driver's finish. */}
           <h2 className="mt-10 text-lg font-semibold">Seasons</h2>
-          <div className="mt-4 flex rounded-lg border border-neutral-800">
+          {/* items-start matters: the middle column's horizontal scrollbar makes
+              it taller than the frozen tables wherever scrollbars take up space,
+              and a stretched <table> hands the surplus to its rows — which
+              would push each frozen row a few pixels below its scrollable
+              counterpart, drifting further with every row. */}
+          <div className="mt-4 flex items-start rounded-lg border border-neutral-800">
             {/* Frozen left: season name + car. Capped and fixed-layout on
                 desktop so long championship/car names wrap instead of eating
                 into the round columns' share of the row. */}

@@ -138,3 +138,42 @@ export async function unarchiveTrack(formData: FormData) {
 
   revalidatePath("/tracks");
 }
+
+// Marks a track a favourite so the new-championship form starts with it starred
+// as must-include. It is only a default — the star can still be cleared there,
+// and championships already built are unaffected.
+export async function favouriteTrack(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const trackId = String(formData.get("track_id") ?? "");
+  if (!trackId) throw new Error("Missing track reference");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tracks")
+    .update({ favourite: true })
+    .eq("id", trackId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/tracks");
+}
+
+// Drops a track's favourite mark, so new championships no longer start with it
+// starred.
+export async function unfavouriteTrack(formData: FormData) {
+  const { isAdmin } = await getAuth();
+  if (!isAdmin) throw new Error("Not authorized");
+
+  const trackId = String(formData.get("track_id") ?? "");
+  if (!trackId) throw new Error("Missing track reference");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tracks")
+    .update({ favourite: false })
+    .eq("id", trackId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/tracks");
+}

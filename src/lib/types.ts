@@ -15,6 +15,8 @@ export interface Track {
   country_code: string;
   source: RacingSeries;
   archived: boolean;
+  // Starts the track starred as must-include in the new-championship form.
+  favourite: boolean;
 }
 
 export interface Car {
