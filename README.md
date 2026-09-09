@@ -94,14 +94,42 @@ after `npm install` (the `db:*` npm scripts wrap it).
    `[auth.external.google]` in `supabase/config.toml`, and restart with
    `npm run db:start`.
 
+### Generating random results (local only)
+
+Filling a season in by hand to try out the standings takes a while, so
+`scripts/generate-race-results.mjs` will invent one for you. Pass a
+championship ID and it walks the schedule in round order, generating and saving
+one race at a time and printing each result — press any key to move on to the
+next race:
+
+```bash
+npm run generate:results -- <championship-id>
+```
+
+Each racer's finishing position is the lowest of four 1-26 rolls, rerolled if it
+collides with a position already taken. How many finishers are classified is
+drawn the same way — the lowest of four 15-26 rolls — and anyone placing outside
+that is recorded as a retirement. Every racer starts the season in a random car from the
+championship's game, then rolls 1-20 before each subsequent race and switches
+car on a 1 or a 2.
+
+Races that already have results are left alone (the cars they were driven in
+still carry forward), so an abandoned run can be picked up where it stopped.
+Pass `--force` to regenerate the whole championship from scratch.
+
+The script writes as the admin user by signing a token with the local stack's
+throwaway JWT secret, so it needs `npm run db:start` running — and it refuses to
+talk to any host but localhost.
+
 ### Handy commands
 
-| Command              | What it does                                              |
-| -------------------- | -------------------------------------------------------- |
-| `npm run db:start`   | Start the local Supabase stack                           |
-| `npm run db:stop`    | Stop it                                                   |
-| `npm run db:reset`   | Re-run migrations + reseed (wipes local data)            |
-| `npm run db:status`  | Print local URLs and keys                                |
+| Command                    | What it does                                        |
+| -------------------------- | --------------------------------------------------- |
+| `npm run db:start`         | Start the local Supabase stack                      |
+| `npm run db:stop`          | Stop it                                             |
+| `npm run db:reset`         | Re-run migrations + reseed (wipes local data)       |
+| `npm run db:status`        | Print local URLs and keys                           |
+| `npm run generate:results` | Generate random results for a championship (local)  |
 
 After editing `supabase/migrations/` or `supabase/seed.sql`, run
 `npm run db:reset` to rebuild the local database from scratch.

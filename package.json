@@ -10,7 +10,8 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:status": "supabase status"
+    "db:status": "supabase status",
+    "generate:results": "node scripts/generate-race-results.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
