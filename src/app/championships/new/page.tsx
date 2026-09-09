@@ -28,18 +28,20 @@ export default async function NewChampionshipPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
+    <main className="mx-auto max-w-md px-4 py-10 sm:max-w-2xl lg:max-w-5xl">
       <Link href="/" className="text-sm text-neutral-400 hover:text-white">
         ← All championships
       </Link>
       <h1 className="mt-4 text-2xl font-bold">New championship</h1>
-      <p className="mt-2 text-sm text-neutral-400">
+      <p className="mt-2 max-w-2xl text-sm text-neutral-400">
         Pick a series and which of its tracks to include, then a random race
-        order of the chosen length is generated automatically. With at least
-        as many selected tracks as races, no track repeats — with 20 or fewer
-        races, at most 3 may come from any one country. If fewer tracks are
-        selected than races, tracks are reused as evenly as a random draw
-        allows so every race still gets a track.
+        order of the chosen length is generated automatically. Selected tracks
+        share the races as evenly as they divide; whatever is left over is a
+        random draw, so a short season leaves tracks out and a long one repeats
+        some more than others. Star a track to keep it out of that draw: every
+        starred track is guaranteed its round, and repeats before any other
+        track does — if that leaves too few rounds to go round, unstarred
+        tracks are dropped from the season to pay for it.
       </p>
 
       {error && (
