@@ -42,6 +42,15 @@ export interface RacerSeason {
   carRows: SeasonCarRow[];
 }
 
+// One round held at a given track in a given season, paired with the
+// driver's result there.
+export interface TrackRaceEntry {
+  round: number;
+  // null when the season visited this track but the driver has no result
+  // recorded for that round.
+  cell: RaceCell | null;
+}
+
 // A driver's aggregated record at a single track, across every season they
 // raced it. Mirrors the per-track stats on the Statistics page.
 export interface DriverTrackRow {
@@ -54,6 +63,10 @@ export interface DriverTrackRow {
   pointsFinishes: number;
   retirements: number;
   points: number;
+  // championship id -> the rounds that season held at this track, in round
+  // order. A season missing from here never visited the track at all, which
+  // is what the per-track breakdown renders as a blank column.
+  byChampionship: Record<string, TrackRaceEntry[]>;
 }
 
 // A driver's aggregated record in a single car, across every season they
@@ -181,11 +194,17 @@ export async function getRacerHistory(
         pointsFinishes: 0,
         retirements: 0,
         points: 0,
+        byChampionship: {},
       };
       trackRows.set(track.id, r);
     }
     return r;
   };
+
+  // track id -> championship id -> that season's rounds at the track. Built
+  // from each season's calendar rather than the driver's results, so a round
+  // they sat out is still distinguishable from one that was never held.
+  const trackSeasons = new Map<string, Record<string, TrackRaceEntry[]>>();
 
   // Per-car running totals, keyed by car id.
   const carRows = new Map<string, DriverCarRow>();
@@ -259,6 +278,16 @@ export async function getRacerHistory(
     for (const race of data.races) {
       const cell = row.cells[race.id] ?? null;
       const ownerKey = ownerByRaceId.get(race.id) ?? null;
+
+      // Record the round against the track's season breakdown whether or not
+      // the driver has a result for it — races arrive in round order, so the
+      // list builds up ordered.
+      const seasonsAtTrack = trackSeasons.get(race.track.id) ?? {};
+      seasonsAtTrack[data.championship.id] = [
+        ...(seasonsAtTrack[data.championship.id] ?? []),
+        { round: race.round, cell },
+      ];
+      trackSeasons.set(race.track.id, seasonsAtTrack);
 
       if (cell) {
         const isWin = cell.rank === 1;
@@ -356,6 +385,13 @@ export async function getRacerHistory(
       retirements,
       carRows,
     });
+  }
+
+  // Attach each track's season-by-season rounds. Only tracks the driver
+  // actually raced have a row, so seasons that visited a track they never
+  // took part in are dropped along with it.
+  for (const row of trackRows.values()) {
+    row.byChampionship = trackSeasons.get(row.track.id) ?? {};
   }
 
   // Order tracks by points scored, then wins, then best (lowest) finish,
