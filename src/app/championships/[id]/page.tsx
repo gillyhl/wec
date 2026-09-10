@@ -5,12 +5,14 @@ import {
   championshipWinner,
   clinchedChampion,
   getChampionshipData,
+  standingsForRaces,
 } from "@/lib/championship";
 import type { RaceCell } from "@/lib/championship";
 import { carsLabel, pointsForRank } from "@/lib/results";
 import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import ChampionshipStandings from "@/components/ChampionshipStandings";
+import FavouriteTrackStandings from "@/components/FavouriteTrackStandings";
 import PointsProgressionChart from "@/components/PointsProgressionChart";
 import ChampionshipAdminControls from "@/components/ChampionshipAdminControls";
 import { RACING_SERIES_LABELS } from "@/lib/types";
@@ -77,6 +79,12 @@ export default async function ChampionshipPage({
   // lead — no rival can catch them even winning every race left.
   const clinched =
     championship.status !== "finished" ? clinchedChampion(data) : null;
+
+  // A separate, informational table: the same results scored over just the
+  // favourite-track rounds. Deliberately kept out of `summary`, the champion
+  // and the clinch, none of which it has any say in.
+  const favouriteRaces = races.filter((race) => race.track.favourite);
+  const favouriteStandings = standingsForRaces(standings, favouriteRaces);
 
   const summary = championshipSummary(data);
   const summaryTiles: { label: string; value: string; sub?: string }[] = [];
@@ -187,6 +195,15 @@ export default async function ChampionshipPage({
           races={races}
           standings={standings}
           isAdmin={isAdmin}
+        />
+      )}
+
+      {/* Favourite-track standings — hidden until asked for */}
+      {standings.length > 0 && favouriteRaces.length > 0 && (
+        <FavouriteTrackStandings
+          championshipId={championship.id}
+          races={favouriteRaces}
+          standings={favouriteStandings}
         />
       )}
 

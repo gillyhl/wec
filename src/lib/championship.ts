@@ -124,6 +124,35 @@ function buildStandings(
   });
 }
 
+// Standings recomputed as if only a subset of a championship's rounds counted:
+// each racer's cells (and per-car rows) are restricted to those races, then
+// scored, sorted and positioned exactly as the full table is. Used for the
+// favourite-tracks standings, which are informational only — no title is
+// decided on them, so nothing here feeds the champion, clinch or summary.
+export function standingsForRaces(
+  standings: StandingsRow[],
+  races: RaceWithTrack[],
+): StandingsRow[] {
+  const raceIds = new Set(races.map((race) => race.id));
+  const restrict = (cells: Record<string, RaceCell>) =>
+    Object.fromEntries(
+      Object.entries(cells).filter(([raceId]) => raceIds.has(raceId)),
+    );
+
+  const entries = standings.map((row) => {
+    // A car the racer only used elsewhere in the season drops out entirely,
+    // rather than leaving an empty row behind.
+    const carRows = row.carRows
+      .map((carRow) => ({ car: carRow.car, cells: restrict(carRow.cells) }))
+      .filter((carRow) => Object.keys(carRow.cells).length > 0);
+    if (carRows.length === 0) carRows.push({ car: null, cells: {} });
+
+    return { racer: row.racer, cells: restrict(row.cells), carRows };
+  });
+
+  return buildStandings(entries, races);
+}
+
 // The championship winner: the racer in first place, once any points have been
 // scored. Standings are pre-sorted (points, then countback), so this is the top
 // row. Returns null when nothing has been scored yet.

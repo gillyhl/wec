@@ -35,13 +35,20 @@ export default function ChampionshipStandings({
   races,
   standings,
   isAdmin,
+  highlightFavourites = true,
 }: {
   championshipId: string;
   races: RaceWithTrack[];
   standings: StandingsRow[];
   isAdmin: boolean;
+  // Marks the favourite tracks' columns. Off for a table whose races are all
+  // favourites already, where tinting every column says nothing.
+  highlightFavourites?: boolean;
 }) {
   const [splitByCar, setSplitByCar] = useState(true);
+
+  const isFavourite = (race: RaceWithTrack) =>
+    highlightFavourites && race.track.favourite;
 
   // Nothing to collapse unless someone actually switched cars, so only offer
   // the toggle when it would change the table.
@@ -186,10 +193,10 @@ export default function ChampionshipStandings({
                   <th
                     key={race.id}
                     className={`w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-10 ${
-                      race.track.favourite ? FAVOURITE_TINT : ""
+                      isFavourite(race) ? FAVOURITE_TINT : ""
                     }`}
                     title={
-                      race.track.favourite
+                      isFavourite(race)
                         ? `${race.track.name} — a favourite`
                         : race.track.name
                     }
@@ -201,7 +208,7 @@ export default function ChampionshipStandings({
                         className="text-base"
                       />
                       <span
-                        className={race.track.favourite ? FAVOURITE_LABEL : ""}
+                        className={isFavourite(race) ? FAVOURITE_LABEL : ""}
                       >
                         {race.track.short_code}
                       </span>
@@ -251,7 +258,7 @@ export default function ChampionshipStandings({
                           <td
                             key={race.id}
                             className={`border border-neutral-800 px-1 text-center text-neutral-300 ${
-                              race.track.favourite ? FAVOURITE_TINT : ""
+                              isFavourite(race) ? FAVOURITE_TINT : ""
                             }`}
                           >
                             –
@@ -303,7 +310,7 @@ export default function ChampionshipStandings({
                   <td
                     key={race.id}
                     className={`border border-neutral-800 px-1 text-center text-[10px] text-neutral-400 ${
-                      race.track.favourite ? FAVOURITE_TINT : ""
+                      isFavourite(race) ? FAVOURITE_TINT : ""
                     }`}
                   >
                     {race.ai_difficulty ?? "–"}
