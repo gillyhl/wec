@@ -91,8 +91,26 @@ export default function ChampionshipStandings({
         </div>
       )}
 
+      {/* The three tables are sized off one set of column widths, kept here as
+          variables so the max-width below can add them up. --frozen is the sum
+          of the left table's three columns; --pts-col covers the points column
+          wherever it lives at this breakpoint (in the scrollable table on
+          mobile, in the frozen right-hand table on desktop). */}
       <div
-        className={`${canSplit ? "mt-2" : "mt-6"} flex items-start rounded-lg border border-neutral-800`}
+        className={`${canSplit ? "mt-2" : "mt-6"} flex items-start rounded-lg border border-neutral-800 [--frozen:9.75rem] [--pts-col:3rem] [--race-col:2.25rem] sm:[--frozen:20.5rem] sm:[--pts-col:4rem] sm:[--race-col:2.5rem]`}
+        // A short season would otherwise stretch a handful of results across
+        // the whole page: the results table is `w-full` under a fixed layout,
+        // so any leftover width is shared out and every race column balloons.
+        // Capping the whole matrix at the width its columns actually ask for
+        // keeps a result cell the same size whether the championship ran four
+        // rounds or fourteen; beyond that the cap stops binding and the middle
+        // scrolls as it did before. The few pixels of slack cover the three
+        // tables' collapsed borders — spare width here only pads the race
+        // columns by a fraction of a pixel, while falling short of it would
+        // leave a permanent sliver of horizontal scroll.
+        style={{
+          maxWidth: `calc(var(--frozen) + ${races.length} * var(--race-col) + var(--pts-col) + 6px)`,
+        }}
       >
         {/* Frozen left: position + racer + car. Fixed layout at every size so
             the Racer/Car widths below actually cap the columns instead of
@@ -192,7 +210,7 @@ export default function ChampionshipStandings({
                 {races.map((race) => (
                   <th
                     key={race.id}
-                    className={`w-9 border border-neutral-800 px-1 align-bottom text-center font-medium sm:w-10 ${
+                    className={`w-[var(--race-col)] border border-neutral-800 px-1 align-bottom text-center font-medium ${
                       isFavourite(race) ? FAVOURITE_TINT : ""
                     }`}
                     title={
