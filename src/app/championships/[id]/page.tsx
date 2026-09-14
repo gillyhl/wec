@@ -13,6 +13,7 @@ import { getAuth } from "@/lib/auth";
 import FlagIcon from "@/components/FlagIcon";
 import ChampionshipStandings from "@/components/ChampionshipStandings";
 import FavouriteTrackStandings from "@/components/FavouriteTrackStandings";
+import SeasonCalendar from "@/components/SeasonCalendar";
 import PointsProgressionChart from "@/components/PointsProgressionChart";
 import ChampionshipAdminControls from "@/components/ChampionshipAdminControls";
 import { RACING_SERIES_LABELS } from "@/lib/types";
@@ -197,6 +198,9 @@ export default async function ChampionshipPage({
           isAdmin={isAdmin}
         />
       )}
+
+      {/* The season's schedule — hidden until asked for */}
+      {races.length > 0 && <SeasonCalendar races={races} />}
 
       {/* Favourite-track standings — hidden until asked for */}
       {standings.length > 0 && favouriteRaces.length > 0 && (

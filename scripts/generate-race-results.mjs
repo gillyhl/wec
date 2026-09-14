@@ -41,13 +41,13 @@ const POSITION_MAX = 26;
 // Classified finishers in a race: the lowest of four 15-26 rolls, drawn once
 // per race. Taking the lowest of four skews the count towards the bottom of
 // that range, so most races retire somebody.
-const FINISHERS_ROLLS = 4;
+const FINISHERS_ROLLS = 6;
 const FINISHERS_MIN = 15;
 const FINISHERS_MAX = 26;
 
 // Car switches: a 1-20 roll before each race, switching on a 1 or a 2.
 const CAR_SWAP_ROLL_MAX = 20;
-const CAR_SWAP_ON_OR_BELOW = 2;
+const CAR_SWAP_ON_OR_BELOW = 1;
 
 // Mirrors wec.points_for_rank so the generated result can show what it scored.
 const POINTS_BY_RANK = {

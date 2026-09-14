@@ -14,8 +14,13 @@ Track WEC championships between drivers. Built with **Next.js (App Router)** and
   `gilberthl93@gmail.com` may create championships or enter race results
   (enforced both in the UI and by Postgres Row Level Security), regardless of
   which method is used to sign in.
+- **Season calendar** — a collapsible list of the season's schedule, one row per
+  round: the track's country flag, its full name, and the date it was raced on.
 - **Create championship** — generates a random race order that always starts at
   Imola (IMO), followed by every other track in a random order.
+- **Race dates** — a race is stamped with today's date the first time results
+  are saved for it, and keeps that date through every later edit. Changing it
+  is deliberate: the date field on the race's own page, alongside AI difficulty.
 - **Automatic points** — entering a race result recomputes championship points
   via a Postgres trigger.
 

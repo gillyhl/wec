@@ -6,9 +6,10 @@ import FlagIcon from "@/components/FlagIcon";
 import DeleteRaceButton from "@/components/DeleteRaceButton";
 import {
   clearRaceResults,
-  saveRaceDifficulty,
+  saveRaceDetails,
   saveRaceResults,
 } from "../../../actions";
+import { todayISO } from "@/lib/dates";
 import type { Car, Racer, RaceResult, Track } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ interface RaceRow {
   round: number;
   championship_id: string;
   ai_difficulty: number | null;
+  race_date: string | null;
   track: Track;
   championship: { series: string };
 }
@@ -36,7 +38,7 @@ export default async function RaceResultsPage({
   const { data: race } = await supabase
     .from("races")
     .select(
-      "id, round, championship_id, ai_difficulty, track:tracks(*), championship:championships(series)",
+      "id, round, championship_id, ai_difficulty, race_date, track:tracks(*), championship:championships(series)",
     )
     .eq("id", raceId)
     .eq("championship_id", id)
@@ -98,11 +100,29 @@ export default async function RaceResultsPage({
       )}
 
       <form
-        action={saveRaceDifficulty}
-        className="mt-6 flex items-end gap-2 border-b border-neutral-800 pb-6"
+        action={saveRaceDetails}
+        className="mt-6 flex flex-wrap items-end gap-2 border-b border-neutral-800 pb-6"
       >
         <input type="hidden" name="race_id" value={race.id} />
         <input type="hidden" name="championship_id" value={id} />
+        <div>
+          <label
+            htmlFor="race_date"
+            className="block text-sm font-medium text-neutral-400"
+          >
+            Date
+          </label>
+          {/* Undated races start on today, which is also what saving results
+              stamps them with. Once dated, the race keeps that date until it
+              is changed right here. */}
+          <input
+            id="race_date"
+            name="race_date"
+            type="date"
+            defaultValue={race.race_date ?? todayISO()}
+            className="mt-2 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-white outline-none focus:border-neutral-400"
+          />
+        </div>
         <div>
           <label
             htmlFor="ai_difficulty"

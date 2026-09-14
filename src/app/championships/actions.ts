@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/lib/auth";
+import { isISODate, todayISO } from "@/lib/dates";
 import type { RacingSeries, Track } from "@/lib/types";
 
 // Every series (Project Cars 2 and iRacing alike) builds its race order the
@@ -200,6 +201,10 @@ export async function createChampionship(formData: FormData) {
 // racer's result. Every result saved (finish or retirement) must record which
 // car the racer used. The DB trigger recomputes championship points
 // automatically.
+//
+// The first time a race is given results it is also stamped with today's date.
+// Later edits leave that date exactly as it is — the only way it moves is
+// someone changing it deliberately in saveRaceDetails.
 export async function saveRaceResults(formData: FormData) {
   const { isAdmin } = await getAuth();
   if (!isAdmin) throw new Error("Not authorized");
@@ -209,6 +214,12 @@ export async function saveRaceResults(formData: FormData) {
   if (!raceId || !championshipId) throw new Error("Missing race reference");
 
   const supabase = await createClient();
+
+  const { data: race } = await supabase
+    .from("races")
+    .select("race_date")
+    .eq("id", raceId)
+    .maybeSingle<{ race_date: string | null }>();
 
   const { data: racers } = await supabase
     .from("racers")
@@ -278,19 +289,39 @@ export async function saveRaceResults(formData: FormData) {
     if (error) throw new Error(error.message);
   }
 
+  // A race with results has been run, so date it — but only if it isn't dated
+  // already, so re-saving a result years later doesn't move the race with it.
+  if (toUpsert.length > 0 && race && race.race_date === null) {
+    const { error } = await supabase
+      .from("races")
+      .update({ race_date: todayISO() })
+      .eq("id", raceId);
+    if (error) throw new Error(error.message);
+  }
+
   revalidatePath(`/championships/${championshipId}`);
   redirect(`/championships/${championshipId}`);
 }
 
-// Records the AI difficulty a race was raced against, or clears it when left
-// blank. No upper bound — AI strength scales vary by game.
-export async function saveRaceDifficulty(formData: FormData) {
+// Records the date a race was held on and the AI difficulty it was raced
+// against, clearing either when left blank. The difficulty has no upper bound —
+// AI strength scales vary by game.
+//
+// This is where a race date is changed deliberately; saveRaceResults only ever
+// fills in a date the race does not have yet.
+export async function saveRaceDetails(formData: FormData) {
   const { isAdmin } = await getAuth();
   if (!isAdmin) throw new Error("Not authorized");
 
   const raceId = String(formData.get("race_id") ?? "");
   const championshipId = String(formData.get("championship_id") ?? "");
   if (!raceId || !championshipId) throw new Error("Missing race reference");
+
+  const rawDate = String(formData.get("race_date") ?? "").trim();
+  if (rawDate !== "" && !isISODate(rawDate)) {
+    throw new Error("Race date must be a valid date.");
+  }
+  const raceDate = rawDate === "" ? null : rawDate;
 
   const raw = String(formData.get("ai_difficulty") ?? "").trim();
   let aiDifficulty: number | null = null;
@@ -304,7 +335,7 @@ export async function saveRaceDifficulty(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("races")
-    .update({ ai_difficulty: aiDifficulty })
+    .update({ race_date: raceDate, ai_difficulty: aiDifficulty })
     .eq("id", raceId);
   if (error) throw new Error(error.message);
 

@@ -47,6 +47,8 @@ export interface Race {
   round: number;
   // AI strength (0-100) raced against, when recorded.
   ai_difficulty: number | null;
+  // The day the race was held, "YYYY-MM-DD". null until the race is run.
+  race_date: string | null;
 }
 
 export interface RaceResult {
